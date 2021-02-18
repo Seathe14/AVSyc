@@ -124,6 +124,6 @@ void MainWindow::on_lineEdit_9_textChanged(const QString& text)
 void MainWindow::on_pushButton_clicked()
 {
 	//ui->pushButton->setText("Hello");
-    QString directory = QFileDialog::getExistingDirectory(this, tr("Брауз Directory"), QDir::currentPath());
+    QString directory = QFileDialog::getExistingDirectory(this, tr("Browse Directory"), QDir::currentPath());
 	ui->lineEdit_9->setText(directory);
 }
