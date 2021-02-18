@@ -87,15 +87,12 @@ VOID WINAPI SvcMain(DWORD dwArgc, LPTSTR* lpszArgv)
 	ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
 	SvcInit(dwArgc, lpszArgv);
 }
-namespace codes
-{
-	enum codes { INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64 };
-}
+
 DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 {
 	DWORD cbRead, cbWritten;
 	HANDLE hPipe = (HANDLE)lpvParam;
-	TCHAR buf[BUFSIZE] = { 0 };
+	//TCHAR buf[BUFSIZE] = { 0 };
 	UCHAR code;
 	while (true)
 	{
@@ -164,10 +161,17 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 				Writeuint64_t(hPipe, check);
 				break;
 			}
+			case codes::codes::PATH:
+			{
+				TCHAR buf[MAX_PATH] = { 0 };
+				ReadPath(hPipe, buf);
+				WritePath(hPipe, buf);
+				for (int i = 0; i < MAX_PATH; i++)
+					buf[i] = 0;
+			}
 			}
 
-			for (int i = 0; i < BUFSIZE; i++)
-				buf[i] = 0;
+	
 		}
 		else
 		{

@@ -20,7 +20,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_lineEdit_returnPressed()
 {
-    Writeint8_t(hPipe,0);
+    Writeint8_t(hPipe,codes::codes::INT8);
     int8_t toSend = ui->lineEdit->text().toInt();
     Writeint8_t(hPipe,toSend);
     int8_t Received = Readint8_t(hPipe);
@@ -29,12 +29,13 @@ void MainWindow::on_lineEdit_returnPressed()
         this->close();
         return;
     }
-    ui->textEdit->setText(QString::number(Received));
+	QString h = QChar::fromLatin1(Received);
+    ui->textEdit->setText(h);
 }
 
 void MainWindow::on_lineEdit_2_returnPressed()
 {
-	Writeint8_t(hPipe, 1);
+	Writeint8_t(hPipe, codes::codes::INT16);
 	int16_t toSend = ui->lineEdit_2->text().toInt();
 	Writeint16_t(hPipe, toSend);
 	int16_t Received = Readint16_t(hPipe);
@@ -44,7 +45,7 @@ void MainWindow::on_lineEdit_2_returnPressed()
 
 void MainWindow::on_lineEdit_3_returnPressed()
 {
-    Writeint8_t(hPipe,2);
+    Writeint8_t(hPipe, codes::codes::INT32);
     int32_t toSend = ui->lineEdit_3->text().toLongLong();
     Writeint32_t(hPipe,toSend);
     int32_t Received = Readint32_t(hPipe);
@@ -54,7 +55,7 @@ void MainWindow::on_lineEdit_3_returnPressed()
 
 void MainWindow::on_lineEdit_4_returnPressed()
 {
-	Writeint8_t(hPipe, 3);
+	Writeint8_t(hPipe, codes::codes::INT64);
 	int64_t toSend = ui->lineEdit_4->text().toLongLong();
 	Writeint64_t(hPipe, toSend);
 	int64_t Received = Readint64_t(hPipe);
@@ -64,7 +65,7 @@ void MainWindow::on_lineEdit_4_returnPressed()
 
 void MainWindow::on_lineEdit_5_returnPressed()
 {
-	Writeint8_t(hPipe, 4);
+	Writeint8_t(hPipe, codes::codes::UINT8);
 	uint8_t toSend = ui->lineEdit_5->text().toLongLong();
 	Writeuint8_t(hPipe, toSend);
 	uint8_t Received = Readuint8_t(hPipe);
@@ -74,7 +75,7 @@ void MainWindow::on_lineEdit_5_returnPressed()
 
 void MainWindow::on_lineEdit_6_returnPressed()
 {
-	Writeint8_t(hPipe, 5);
+	Writeint8_t(hPipe, codes::codes::UINT16);
 	uint16_t toSend = ui->lineEdit_6->text().toLongLong();
 	Writeuint16_t(hPipe, toSend);
 	uint16_t Received = Readuint16_t(hPipe);
@@ -84,7 +85,7 @@ void MainWindow::on_lineEdit_6_returnPressed()
 
 void MainWindow::on_lineEdit_7_returnPressed()
 {
-	Writeint8_t(hPipe, 6);
+	Writeint8_t(hPipe, codes::codes::UINT32);
 	uint32_t toSend = ui->lineEdit_7->text().toLongLong();
 	Writeuint32_t(hPipe, toSend);
 	uint32_t Received = Readuint32_t(hPipe);
@@ -94,10 +95,35 @@ void MainWindow::on_lineEdit_7_returnPressed()
 
 void MainWindow::on_lineEdit_8_returnPressed()
 {
-	Writeint8_t(hPipe, 7);
+	Writeint8_t(hPipe, codes::codes::UINT64);
 	uint64_t toSend = ui->lineEdit_8->text().toULongLong();
 	Writeuint64_t(hPipe, toSend);
 	uint64_t Received = Readuint64_t(hPipe);
 
 	ui->textEdit_8->setText(QString::number(Received));
+}
+
+void MainWindow::on_lineEdit_9_returnPressed()
+{
+	
+}
+
+void MainWindow::on_lineEdit_9_textChanged(const QString& text)
+{
+	Writeint8_t(hPipe, codes::codes::PATH);
+	TCHAR toSend[MAX_PATH] = { 0 };
+	TCHAR toReceive[MAX_PATH] = { 0 };
+
+	ui->lineEdit_9->text().toWCharArray(toSend);
+	WritePath(hPipe, toSend);
+	ReadPath(hPipe, toReceive);
+	ui->textEdit_9->setText(QString::fromWCharArray(toReceive));
+}
+
+
+void MainWindow::on_pushButton_clicked()
+{
+	//ui->pushButton->setText("Hello");
+    QString directory = QFileDialog::getExistingDirectory(this, tr("Брауз Directory"), QDir::currentPath());
+	ui->lineEdit_9->setText(directory);
 }

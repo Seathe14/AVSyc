@@ -1,5 +1,5 @@
 #include "ReadWrite.h"
-
+#include <iostream>
 int8_t Readint8_t(HANDLE hPipe)
 {
 	DWORD cbRead;
@@ -110,3 +110,14 @@ void Writeuint64_t(HANDLE hPipe, uint64_t num)
 	WriteFile(hPipe, &num, sizeof(uint64_t), &cbWritten, NULL);
 }
 
+void ReadPath(HANDLE hPipe, TCHAR* buf)
+{
+	DWORD cbRead;
+	ReadFile(hPipe, buf, MAX_PATH * sizeof(TCHAR), &cbRead, NULL);
+}
+
+void WritePath(HANDLE hPipe, TCHAR* buf)
+{
+	DWORD cbWritten;
+	WriteFile(hPipe, buf, MAX_PATH * sizeof(TCHAR), &cbWritten, NULL);
+}

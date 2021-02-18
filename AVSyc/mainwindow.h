@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileDialog>
 #include <windows.h>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,8 +25,9 @@ private slots:
 	void on_lineEdit_6_returnPressed();
 	void on_lineEdit_7_returnPressed();
 	void on_lineEdit_8_returnPressed();
-
-
+	void on_lineEdit_9_returnPressed();
+    void on_lineEdit_9_textChanged(const QString& text);
+    void on_pushButton_clicked();
 
 private:
     Ui::MainWindow *ui;
