@@ -121,3 +121,20 @@ void WritePath(HANDLE hPipe, TCHAR* buf)
 	DWORD cbWritten;
 	WriteFile(hPipe, buf, MAX_PATH * sizeof(TCHAR), &cbWritten, NULL);
 }
+
+std::u16string ReadU16String(HANDLE hPipe)
+{
+	uint16_t length = Readuint16_t(hPipe);
+	DWORD cbRead;
+	char16_t cstr[512];
+	ReadFile(hPipe, cstr, length*sizeof(char16_t), &cbRead, NULL);
+	cstr[length] = '\0';
+	return std::u16string(cstr);
+}
+
+void WriteU16String(HANDLE hPipe, std::u16string str)
+{
+	Writeuint16_t(hPipe, str.length());
+	DWORD cbWritten;
+	WriteFile(hPipe, (void*)str.c_str(), str.length()*sizeof(char16_t), &cbWritten, NULL);
+}

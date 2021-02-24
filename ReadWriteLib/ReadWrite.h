@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <windows.h>
+#include <string>
 namespace codes
 {
 	enum codes { INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, PATH };
@@ -31,4 +32,8 @@ void Writeuint64_t(HANDLE hPipe, uint64_t num);
 
 void ReadPath(HANDLE hPipe, TCHAR* buf);
 void WritePath(HANDLE hPipe, TCHAR* buf);
+
+std::u16string ReadU16String(HANDLE hPipe);
+void WriteU16String(HANDLE hPipe, std::u16string str);
+
 
