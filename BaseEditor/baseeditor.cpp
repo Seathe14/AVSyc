@@ -70,7 +70,7 @@ void BaseEditor::Load()
         ui->tableWidget->setRowCount(rowsCount);
 		for (int i = 0; i < rowsCount; i++)
 		{
-			ui->tableWidget->setItem(i, 0, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
+            ui->tableWidget->setItem(i, 0, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
 			ui->tableWidget->setItem(i, 1, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
 			ui->tableWidget->setItem(i, 2, new QTableWidgetItem(QString::number(Readuint64_t(hFile))));
 			ui->tableWidget->setItem(i, 3, new QTableWidgetItem(QString::number(Readuint64_t(hFile))));

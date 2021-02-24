@@ -161,12 +161,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Bases.cpp" />
+    <ClCompile Include="BasesLoader.cpp" />
     <ClCompile Include="WinService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ReadWriteLib\ReadWriteLib.vcxproj">
       <Project>{eb1e2ec6-18bc-4746-8bc2-d3c73722f6bb}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Bases.h" />
+    <ClInclude Include="BasesLoader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

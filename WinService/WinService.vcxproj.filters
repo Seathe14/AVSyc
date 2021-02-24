@@ -18,5 +18,19 @@
     <ClCompile Include="WinService.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BasesLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Bases.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Bases.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BasesLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

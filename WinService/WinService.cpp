@@ -5,6 +5,7 @@
 #include <aclapi.h>
 #include "sample.h"
 #include <string>
+#include "Bases.h"
 #include "ReadWrite.h"
 #pragma comment(lib,"advapi32.lib")
 
@@ -94,6 +95,8 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 	HANDLE hPipe = (HANDLE)lpvParam;
 	//TCHAR buf[BUFSIZE] = { 0 };
 	UCHAR code;
+	//Sleep(5000);
+	Bases base(u"C:\\Users\\imynn\\source\\repos\\Antivirus\\BaseEditor\\Ghosts.dbs");
 	while (true)
 	{
 		if (ReadFile(hPipe, &code, sizeof(UCHAR), &cbRead, NULL) != 0)

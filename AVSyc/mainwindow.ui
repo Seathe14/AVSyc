@@ -312,7 +312,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Path</string>
+     <string>Путь</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton">
@@ -335,7 +335,7 @@
      <x>0</x>
      <y>0</y>
      <width>815</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
