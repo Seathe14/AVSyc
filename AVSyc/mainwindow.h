@@ -33,5 +33,9 @@ private slots:
 private:
     Ui::MainWindow *ui;
     HANDLE hPipe;
+	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
+
+private:
+    void connectPipe();
 };
 #endif // MAINWINDOW_H

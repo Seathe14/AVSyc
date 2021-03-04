@@ -1,5 +1,4 @@
 #include "BasesLoader.h"
-
 std::unordered_map<uint64_t, Record> BaseLoader::Load(const std::u16string path)
 {
 	HANDLE hFile = CreateFile((wchar_t*)path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -16,11 +15,12 @@ std::unordered_map<uint64_t, Record> BaseLoader::Load(const std::u16string path)
 		record.name = ReadU16String(hFile);
 		record.type = ReadU16String(hFile);
 		record.sig = Readuint64_t(hFile);
+		std::reverse((uint8_t*)&record.sig,(uint8_t*)&record.sig+8);
 		record.length = Readuint64_t(hFile);
-		record.sha256 = Readuint64_t(hFile);
+		record.sha256 = ReadU16String(hFile);
 		record.offsetStart = Readuint64_t(hFile);
 		record.offsetEnd = Readuint64_t(hFile);
-		base.insert({ record.length,record });
+		base.insert({ record.sig,record });
 	}
 	CloseHandle(hFile);
 	return base;

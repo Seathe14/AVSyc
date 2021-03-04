@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <windows.h>
 #include <TCHAR.h>
@@ -6,9 +7,15 @@
 #include "sample.h"
 #include <string>
 #include "Bases.h"
+#include "Scanner.h"
+#include <userenv.h>
+#include <fstream>
 #include "ReadWrite.h"
+#include <TlHelp32.h>
+#include <WtsApi32.h>
 #pragma comment(lib,"advapi32.lib")
-
+#pragma comment(lib,"wtsapi32.lib")
+#pragma comment(lib,"userenv.lib")
 #define BUFSIZE 512
 #define SVCNAME TEXT("AVSyc")
 
@@ -61,6 +68,7 @@ VOID SvcInstall()
 		printf("OpenSCManager failed (%d)\n", GetLastError());
 		return;
 	}
+
 	schService = CreateService(schSCManager, SVCNAME, SVCNAME,
 		SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
 		SERVICE_ERROR_NORMAL, szPath, NULL, NULL, NULL, NULL, NULL);
@@ -93,9 +101,7 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 {
 	DWORD cbRead, cbWritten;
 	HANDLE hPipe = (HANDLE)lpvParam;
-	//TCHAR buf[BUFSIZE] = { 0 };
 	UCHAR code;
-	//Sleep(5000);
 	Bases base(u"C:\\Users\\imynn\\source\\repos\\Antivirus\\BaseEditor\\Ghosts.dbs");
 	while (true)
 	{
@@ -113,6 +119,17 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 					ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
 					return 0;
 				}
+				if (check == 6)
+				{
+					base.updateBase(u"C:\\Users\\imynn\\source\\repos\\Antivirus\\BaseEditor\\Ghosts.dbs");
+				}
+				if (check == 7)
+				{
+
+					
+				}
+				check = 0;
+
 				break;
 			}
 			case codes::codes::INT16:
@@ -166,15 +183,18 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 			}
 			case codes::codes::PATH:
 			{
+				
 				TCHAR buf[MAX_PATH] = { 0 };
 				ReadPath(hPipe, buf);
-				WritePath(hPipe, buf);
-				for (int i = 0; i < MAX_PATH; i++)
-					buf[i] = 0;
+				Scanner sc(base);
+				
+				sc.Scan(buf);
+				std::u16string report = sc.getStatistics();
+				WriteU16String(hPipe, report);
+
 			}
 			}
 
-	
 		}
 		else
 		{
@@ -182,6 +202,59 @@ DWORD WINAPI AcceptMessages(LPVOID lpvParam)
 			ConnectNamedPipe(hPipe, NULL);
 		}
 	}
+}
+DWORD getProcID(const wchar_t* procName)
+{
+	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32 procEntry = {};
+	procEntry.dwSize = sizeof(procEntry);
+	Process32First(hSnap, &procEntry);
+	DWORD procID;
+	while (Process32Next(hSnap, &procEntry))
+	{
+		if (!wcscmp(procEntry.szExeFile, procName))
+		{
+			procID = procEntry.th32ProcessID;
+		}
+	}
+	CloseHandle(hSnap);
+	return procID;
+}
+DWORD WINAPI WaitForPipe(LPVOID lpvParam)
+{
+	HANDLE* hPipe = (HANDLE*)lpvParam;
+	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
+	SECURITY_DESCRIPTOR sd = { 0, };
+	SECURITY_ATTRIBUTES sa = { sizeof(sa), };
+	InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
+	SetSecurityDescriptorDacl(&sd, true, NULL, false);
+	sa.lpSecurityDescriptor = &sd;
+	*hPipe = CreateNamedPipe(lpszPipeName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
+	ConnectNamedPipe(*hPipe, NULL);
+	hPipe = NULL;
+	return 0;
+}
+void launchUI()
+{
+#if _DEBUG
+	wchar_t path[MAX_PATH] = L"C:\\Users\\imynn\\source\\repos\\Antivirus\\AVSyc\\debug\\AVSyc.exe";
+#else 
+	wchar_t path[MAX_PATH] = L"C:\\Users\\imynn\\source\\repos\\Antivirus\\AVSyc\\release\\AVSyc.exe";
+#endif
+	STARTUPINFO si = { 0 };
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi = { 0 };
+	ZeroMemory(&pi, sizeof(pi));
+	HANDLE token;
+	HANDLE newToken;
+	WTSQueryUserToken(WTSGetActiveConsoleSessionId(), &token);
+	TOKEN_LINKED_TOKEN tlt;
+	DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityIdentification, TokenPrimary, &newToken);
+	SetTokenInformation(newToken, TokenLinkedToken, &tlt, sizeof(tlt));
+	LPVOID penv = 0;
+	CreateEnvironmentBlock(&penv, newToken, FALSE);
+	CreateProcessAsUserW(newToken, path, path, NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, penv, NULL, &si, &pi);
 }
 VOID SvcInit(DWORD dwArgc, LPTSTR* lpszArgv)
 {
@@ -195,19 +268,15 @@ VOID SvcInit(DWORD dwArgc, LPTSTR* lpszArgv)
 	}
 	ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 	// TO_DO Perform work
+
 	HANDLE hPipe = INVALID_HANDLE_VALUE;
 	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
-	BOOL fConnected;
-	//Sleep(5000);
-	SECURITY_DESCRIPTOR sd = { 0, };
-	SECURITY_ATTRIBUTES sa = { sizeof(sa), };
-	InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
-	SetSecurityDescriptorDacl(&sd, true, NULL, false);
-	sa.lpSecurityDescriptor = &sd;
-	hPipe = CreateNamedPipe(lpszPipeName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
-	ConnectNamedPipe(hPipe, NULL);
-	CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, 0);
-	
+	HANDLE threadPipe;
+	threadPipe = CreateThread(NULL, 0, WaitForPipe, &hPipe, 0, NULL);
+	launchUI();
+	WaitForSingleObject(threadPipe, INFINITE);
+	CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, NULL);
+
 }
 
 VOID ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)

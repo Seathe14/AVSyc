@@ -1,20 +1,39 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "ReadWrite.h"
+#include <thread>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
-    LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
-    hPipe = CreateFile(lpszPipeName,GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,0,NULL);
+    //hPipe = CreateFile(lpszPipeName,GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,0,NULL);
+	//To consider: Admin rights -> service, service -> no admin rights(doesn't work if AVSyc requires admin rights). Should AVSyc be always with admin rights?
+	std::thread t1(&MainWindow::connectPipe,this);
+	SC_HANDLE sc = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_CONNECT);
+	int a = GetLastError();
+	SC_HANDLE OS = OpenService(sc, L"AVSyc", SERVICE_START);
+	a = GetLastError();
+	StartService(OS, 0, NULL);
+	CloseHandle(sc);
+	CloseHandle(OS);
+	t1.detach();
 }
-
 MainWindow::~MainWindow()
 {
     DisconnectNamedPipe(hPipe);
+	CloseHandle(hPipe);
     delete ui;
+}
+void MainWindow::connectPipe()
+{
+	hPipe = CreateFile(lpszPipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	while (hPipe == INVALID_HANDLE_VALUE)
+	{
+		hPipe = CreateFile(lpszPipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		Sleep(1);
+	}
 }
 
 
@@ -112,17 +131,19 @@ void MainWindow::on_lineEdit_9_textChanged(const QString& text)
 {
 	Writeint8_t(hPipe, codes::codes::PATH);
 	TCHAR toSend[MAX_PATH] = { 0 };
-	TCHAR toReceive[MAX_PATH] = { 0 };
+	//TCHAR toReceive[MAX_PATH] = { 0 };
 
 	ui->lineEdit_9->text().toWCharArray(toSend);
 	WritePath(hPipe, toSend);
-	ReadPath(hPipe, toReceive);
-	ui->textEdit_9->setText(QString::fromWCharArray(toReceive));
+
+	std::u16string stat = ReadU16String(hPipe);
+	ui->textEdit_9->append(QString::fromStdU16String(stat));
 }
 
 
 void MainWindow::on_pushButton_clicked()
 {
-    QString directory = QFileDialog::getExistingDirectory(this, tr("Browse Directory"), QDir::currentPath());
+    QString directory = QFileDialog::getOpenFileName(this, tr("Browse file to scan"),"C:\\", tr("All files(*)"));
 	ui->lineEdit_9->setText(directory);
 }
+

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <ReadWrite.h>
 #include "Bases.h"
+#include <sstream>
 class BaseLoader
 {
 public:
