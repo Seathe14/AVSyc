@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <WtsApi32.h>
 #include <userenv.h>
-#include "Bases.h"
 #include "Scanner.h"
 #include <ReadWrite.h>
 #pragma comment(lib,"wtsapi32.lib")
@@ -136,12 +135,12 @@ VOID Service::ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD
 
 void Service::launchUI()
 {
-	std::filesystem::path p1("C:\\Users\\imynn\\source\\repos\\Antivirus\\AVSyc.exe");
+	std::filesystem::path p1(SOLUTION_DIR);
 #if _DEBUG
-	//p1 += "C:\\Users\\imynn\\source\\repos\\Antivirus\\AVSyc.exe";
+	p1 += "AVSyc\\release\\AVSyc.exe";
 	std::wstring path = p1.wstring();
 #else 
-	//p1 += "AVSyc\\release\\AVSyc.exe";
+	p1 += "AVSyc\\release\\AVSyc.exe";
 	std::wstring path = p1.wstring();
 #endif
 	STARTUPINFO si = { 0 };
@@ -270,8 +269,6 @@ VOID Service::SvcInit()
 	ServiceInstance->ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 	// TO_DO Perform work
 
-	//HANDLE hPipe = INVALID_HANDLE_VALUE;
-	//LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
 	HANDLE threadPipe;
 	threadPipe = CreateThread(NULL, 0, WaitForPipe, NULL, 0, NULL);
 	ServiceInstance->launchUI();

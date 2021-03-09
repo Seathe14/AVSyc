@@ -1,6 +1,5 @@
 #pragma once
 #include "Bases.h"
-#include <fstream>
 #include <algorithm>
 class Scanner
 {
