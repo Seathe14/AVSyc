@@ -27,23 +27,23 @@ BaseEditor::~BaseEditor()
     delete ui;
 }
 
-void BaseEditor::on_pushButton_clicked()
+void BaseEditor::on_addButton_clicked()
 {
-    ui->tableWidget->insertRow(ui->tableWidget->rowCount());
+    ui->baseTable->insertRow(ui->baseTable->rowCount());
     QTableWidgetItem* lenItem = new QTableWidgetItem();
 	QTableWidgetItem* shaItem = new QTableWidgetItem();
 
     lenItem->setFlags(lenItem->flags() ^ Qt::ItemIsEditable);
     shaItem->setFlags(shaItem->flags() ^ Qt::ItemIsEditable);
 
-    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1, 3, lenItem);
-	ui->tableWidget->setItem(ui->tableWidget->rowCount()-1, 4, shaItem);
+    ui->baseTable->setItem(ui->baseTable->rowCount()-1, 3, lenItem);
+	ui->baseTable->setItem(ui->baseTable->rowCount()-1, 4, shaItem);
 
 }
 
-void BaseEditor::on_pushButton_2_clicked()
+void BaseEditor::on_deleteButton_clicked()
 {
-    ui->tableWidget->removeRow(ui->tableWidget->currentRow());
+    ui->baseTable->removeRow(ui->baseTable->currentRow());
 }
 
 void BaseEditor::Save()
@@ -62,16 +62,16 @@ void BaseEditor::Save()
         }
         std::u16string header = u"Sychev";
 		WriteU16String(hFile, header);
-        Writeuint16_t(hFile, ui->tableWidget->rowCount());
-        for (int i = 0; i < ui->tableWidget->rowCount(); i++)
+        Writeuint16_t(hFile, ui->baseTable->rowCount());
+        for (int i = 0; i < ui->baseTable->rowCount(); i++)
         {
-                WriteU16String(hFile, ui->tableWidget->item(i, 0)->text().toStdU16String());
-                WriteU16String(hFile, ui->tableWidget->item(i, 1)->text().toStdU16String());
-                Writeuint64_t(hFile, (uint64_t)ui->tableWidget->item(i, 2)->text().toULongLong(&ok,16));
-				Writeuint64_t(hFile, (uint64_t)ui->tableWidget->item(i, 3)->text().toULongLong());
-                WriteU16String(hFile, ui->tableWidget->item(i, 4)->text().toStdU16String());
-				Writeuint64_t(hFile, (uint64_t)ui->tableWidget->item(i, 5)->text().toULongLong(&ok,16));
-				Writeuint64_t(hFile, (uint64_t)ui->tableWidget->item(i, 6)->text().toULongLong(&ok,16));
+                WriteU16String(hFile, ui->baseTable->item(i, 0)->text().toStdU16String());
+                WriteU16String(hFile, ui->baseTable->item(i, 1)->text().toStdU16String());
+                Writeuint64_t(hFile, (uint64_t)ui->baseTable->item(i, 2)->text().toULongLong(&ok,16));
+				Writeuint64_t(hFile, (uint64_t)ui->baseTable->item(i, 3)->text().toULongLong());
+                WriteU16String(hFile, ui->baseTable->item(i, 4)->text().toStdU16String());
+				Writeuint64_t(hFile, (uint64_t)ui->baseTable->item(i, 5)->text().toULongLong(&ok,16));
+				Writeuint64_t(hFile, (uint64_t)ui->baseTable->item(i, 6)->text().toULongLong(&ok,16));
         }
         CloseHandle(hFile);
     }
@@ -87,30 +87,30 @@ void BaseEditor::Load()
 		hFile = CreateFile((LPCWSTR)fileName.toStdU16String().c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         std::u16string header = ReadU16String(hFile);
         uint16_t rowsCount = Readuint16_t(hFile);
-        ui->tableWidget->setRowCount(rowsCount);
+        ui->baseTable->setRowCount(rowsCount);
 		for (int i = 0; i < rowsCount; i++)
 		{
-            ui->tableWidget->setItem(i, 0, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
+            ui->baseTable->setItem(i, 0, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
 
-			ui->tableWidget->setItem(i, 1, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
+			ui->baseTable->setItem(i, 1, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
             QString hexSig = QString::number(Readuint64_t(hFile), 16);
             hexSig = hexSig.toUpper();
 
-			ui->tableWidget->setItem(i, 2, new QTableWidgetItem(hexSig));
+			ui->baseTable->setItem(i, 2, new QTableWidgetItem(hexSig));
 
-			ui->tableWidget->setItem(i, 3, new QTableWidgetItem(QString::number(Readuint64_t(hFile))));
-            ui->tableWidget->item(i, 3)->setFlags(ui->tableWidget->item(i, 3)->flags() ^ Qt::ItemIsEditable);
+			ui->baseTable->setItem(i, 3, new QTableWidgetItem(QString::number(Readuint64_t(hFile))));
+            ui->baseTable->item(i, 3)->setFlags(ui->baseTable->item(i, 3)->flags() ^ Qt::ItemIsEditable);
 
-            ui->tableWidget->setItem(i, 4, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
-            ui->tableWidget->item(i, 4)->setFlags(ui->tableWidget->item(i, 4)->flags() ^ Qt::ItemIsEditable);
+            ui->baseTable->setItem(i, 4, new QTableWidgetItem(QString::fromStdU16String(ReadU16String(hFile))));
+            ui->baseTable->item(i, 4)->setFlags(ui->baseTable->item(i, 4)->flags() ^ Qt::ItemIsEditable);
 
             hexSig = QString::number(Readuint64_t(hFile),16);
             hexSig = hexSig.toUpper();
-			ui->tableWidget->setItem(i, 5, new QTableWidgetItem(hexSig));
+			ui->baseTable->setItem(i, 5, new QTableWidgetItem(hexSig));
 
 			hexSig = QString::number(Readuint64_t(hFile),16);
 			hexSig = hexSig.toUpper();
-			ui->tableWidget->setItem(i, 6, new QTableWidgetItem(hexSig));
+			ui->baseTable->setItem(i, 6, new QTableWidgetItem(hexSig));
 		}
 		CloseHandle(hFile);
 	}
@@ -123,32 +123,32 @@ void BaseEditor::setHash()
     QString abv;
     bool bStatus = false;
     uint sigLength;
-    for (int i = 0; i < ui->tableWidget->rowCount(); i++)
+    for (int i = 0; i < ui->baseTable->rowCount(); i++)
     {
-        if (ui->tableWidget->item(i, 2))
+        if (ui->baseTable->item(i, 2))
         {
-            abv = ui->tableWidget->item(i, 2)->text();
+            abv = ui->baseTable->item(i, 2)->text();
             abv.replace(" ", "");
-            ui->tableWidget->item(i, 2)->setText(abv);
-            sigLength = ui->tableWidget->item(i, 2)->text().length();
-            if (ui->tableWidget->item(i, 2)->text().length() > 16)
+            ui->baseTable->item(i, 2)->setText(abv);
+            sigLength = ui->baseTable->item(i, 2)->text().length();
+            if (ui->baseTable->item(i, 2)->text().length() > 16)
             {
-                QString s = ui->tableWidget->item(i, 2)->text().mid(16);
+                QString s = ui->baseTable->item(i, 2)->text().mid(16);
                 std::vector<uint8_t> bytes = HexToBytes(s.toStdString());
                 //ui->tableWidget->item(i, 3)->setFlags(ui->tableWidget->item(i, 3)->flags() ^ Qt::ItemIsEditable);
                 SHA256 sha;
                 sha.update(bytes.data(),bytes.size());
                 uint8_t* digest = sha.digest();
-                ui->tableWidget->item(i, 4)->setText(QString::fromStdString(SHA256::toString(digest)));
-                ui->tableWidget->item(i, 3)->setText(QString::number((sigLength - 16) / 2));
-                ui->tableWidget->item(i, 2)->setText(ui->tableWidget->item(i, 2)->text().left(16));
+                ui->baseTable->item(i, 4)->setText(QString::fromStdString(SHA256::toString(digest)));
+                ui->baseTable->item(i, 3)->setText(QString::number((sigLength - 16) / 2));
+                ui->baseTable->item(i, 2)->setText(ui->baseTable->item(i, 2)->text().left(16));
                 //ui->tableWidget->setItem(i, 4, new QTableWidgetItem(QString::fromStdString(SHA256::toString(digest))));
                 //ui->tableWidget->setItem(i, 2, new QTableWidgetItem(ui->tableWidget->item(i, 2)->text().left(16)));
                 delete[]digest;
             }
             else
             {
-                sValue = ui->tableWidget->item(i, 2)->text();
+                sValue = ui->baseTable->item(i, 2)->text();
 
             }
         }
@@ -156,22 +156,22 @@ void BaseEditor::setHash()
     }
 }
 
-void BaseEditor::on_pushButton_3_clicked()
+void BaseEditor::on_saveButton_clicked()
 {
     Save();
     setHash();
 
 }
 
-void BaseEditor::on_pushButton_4_clicked()
+void BaseEditor::on_loadButton_clicked()
 {
     Load();
 }
 
-void BaseEditor::on_tableWidget_itemChanged(QTableWidgetItem *item)
+void BaseEditor::on_baseTable_itemChanged(QTableWidgetItem *item)
 {
 
-    if(item == ui->tableWidget->item(ui->tableWidget->currentRow(),2))
+    if(item == ui->baseTable->item(ui->baseTable->currentRow(),2))
     {
 		QRegularExpression re("[0-9a-fA-F ]+");
 		QRegularExpressionValidator v(re, 0);
@@ -190,17 +190,17 @@ void BaseEditor::on_tableWidget_itemChanged(QTableWidgetItem *item)
     }
 }
 
-void BaseEditor::on_tableWidget_itemClicked(QTableWidgetItem *item)
+void BaseEditor::on_baseTable_itemClicked(QTableWidgetItem *item)
 {
-    if (item == ui->tableWidget->item(ui->tableWidget->currentRow(), 4))
+    if (item == ui->baseTable->item(ui->baseTable->currentRow(), 4))
     {
         item->setToolTip(item->text());
     }
 }
 
-void BaseEditor::on_tableWidget_itemDoubleClicked(QTableWidgetItem *item)
+void BaseEditor::on_baseTable_itemDoubleClicked(QTableWidgetItem *item)
 {
-	if (item == ui->tableWidget->item(ui->tableWidget->currentRow(), 4))
+	if (item == ui->baseTable->item(ui->baseTable->currentRow(), 4))
 	{
         timer->start(100);
 		m_tooltipTimerStart = QDateTime::currentMSecsSinceEpoch();

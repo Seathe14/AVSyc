@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Service">
+      <UniqueIdentifier>{a677c146-1124-46d0-b09b-ea5f9f7725dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scanner">
+      <UniqueIdentifier>{7dd3e7f2-7fac-4c28-89a4-abe7ecf79b4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SHA256">
+      <UniqueIdentifier>{a265838c-01d3-4504-8ada-73bba41fecd6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -24,14 +33,14 @@
     <ClCompile Include="Bases.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\SHA256\src\SHA256.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Service.cpp">
+      <Filter>Service</Filter>
     </ClCompile>
     <ClCompile Include="Scanner.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Scanner</Filter>
     </ClCompile>
-    <ClCompile Include="Service.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\SHA256\src\SHA256.cpp">
+      <Filter>SHA256</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -41,14 +50,14 @@
     <ClInclude Include="BasesLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\SHA256\include\SHA256.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Service.h">
+      <Filter>Service</Filter>
     </ClInclude>
     <ClInclude Include="Scanner.h">
-      <Filter>Header Files</Filter>
+      <Filter>Scanner</Filter>
     </ClInclude>
-    <ClInclude Include="Service.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\SHA256\include\SHA256.h">
+      <Filter>SHA256</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

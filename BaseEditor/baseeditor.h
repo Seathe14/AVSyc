@@ -25,19 +25,19 @@ public:
     ~BaseEditor();
 
 private slots:
-    void on_pushButton_clicked();
+    void on_addButton_clicked();
 
-    void on_pushButton_2_clicked();
+    void on_deleteButton_clicked();
 
-    void on_pushButton_3_clicked();
+    void on_saveButton_clicked();
 
-    void on_pushButton_4_clicked();
+    void on_loadButton_clicked();
 
-    void on_tableWidget_itemChanged(QTableWidgetItem *item);
+    void on_baseTable_itemChanged(QTableWidgetItem *item);
 
-    void on_tableWidget_itemClicked(QTableWidgetItem *item);
+    void on_baseTable_itemClicked(QTableWidgetItem *item);
 
-    void on_tableWidget_itemDoubleClicked(QTableWidgetItem *item);
+    void on_baseTable_itemDoubleClicked(QTableWidgetItem *item);
 
     void update();
 

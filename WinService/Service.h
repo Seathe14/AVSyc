@@ -1,7 +1,12 @@
 #pragma once
 #include <windows.h>
 #include "sample.h"
-#define SVCNAME TEXT("AVSycTestClass")
+#ifndef NDEBUG
+#define SVCNAME TEXT("AVSycDbg")
+#else
+#define SVCNAME TEXT("AVSyc")
+#endif // DEBUG
+
 class Service
 {
 public:
@@ -16,7 +21,7 @@ private:
 	VOID ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint);
 	static DWORD WINAPI AcceptMessages(LPVOID lpvParam);
 	static DWORD WINAPI WaitForPipe(LPVOID lpvParam);
-
+	VOID WINAPI DoUpdateSvcDacl(void);
 	static inline Service* ServiceInstance;
 
 	LPWSTR ServiceName;

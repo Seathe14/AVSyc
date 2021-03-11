@@ -35,6 +35,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="SHA256">
+      <UniqueIdentifier>{b5323fe7-8fce-49ea-b06a-d8fa2a401762}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="baseeditor.cpp">
@@ -44,7 +47,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\SHA256\src\SHA256.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>SHA256</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -67,7 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\SHA256\include\SHA256.h">
-      <Filter>Header Files</Filter>
+      <Filter>SHA256</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

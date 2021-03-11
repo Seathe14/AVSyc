@@ -5,10 +5,11 @@
 #include <WtsApi32.h>
 #include <userenv.h>
 #include "Scanner.h"
+#include <aclapi.h>
 #include <ReadWrite.h>
 #pragma comment(lib,"wtsapi32.lib")
 #pragma comment(lib,"userenv.lib")
-#define BUFSIZE 512
+#define BUFSIZE 2048
 Service::Service()
 {
 
@@ -19,6 +20,10 @@ void Service::ServiceProcess(int argc, TCHAR* argv[])
 	if (lstrcmp(argv[1], TEXT("install")) == 0)
 	{
 		ServiceInstance->SvcInstall();
+	}
+	if (lstrcmp(argv[1], TEXT("update")) == 0)
+	{
+		ServiceInstance->DoUpdateSvcDacl();
 	}
 	SERVICE_TABLE_ENTRY DispatchTable[] =
 	{
@@ -112,6 +117,8 @@ VOID WINAPI Service::SvcCtrlHandler(DWORD dwCtrl)
 		break;;
 	case SERVICE_CONTROL_INTERROGATE:
 		break;
+	case CTRL_CLOSE_EVENT:
+		break;
 	default:
 		break;
 	}
@@ -137,7 +144,7 @@ void Service::launchUI()
 {
 	std::filesystem::path p1(SOLUTION_DIR);
 #if _DEBUG
-	p1 += "AVSyc\\release\\AVSyc.exe";
+	p1 += "AVSyc\\debug\\AVSyc.exe";
 	std::wstring path = p1.wstring();
 #else 
 	p1 += "AVSyc\\release\\AVSyc.exe";
@@ -146,20 +153,23 @@ void Service::launchUI()
 	STARTUPINFO si = { 0 };
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
+	si.lpDesktop = L"winsta0\\default";
 	PROCESS_INFORMATION pi = { 0 };
 	ZeroMemory(&pi, sizeof(pi));
 	HANDLE token;
 	WTSQueryUserToken(WTSGetActiveConsoleSessionId(), &token);
 	LPVOID penv = 0;
-	CreateEnvironmentBlock(&penv, token, FALSE);
-	CreateProcessAsUserW(token, path.c_str(), (wchar_t*)path.c_str(), NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, penv, NULL, &si, &pi);
+	CreateEnvironmentBlock(&penv, token, TRUE);
+	CreateProcessAsUserW(token, path.c_str(), NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT, penv, NULL, &si, &pi);
 }
 
 DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 {
 	DWORD cbRead, cbWritten;
 	UCHAR code;
-	Bases base(u"C:\\Users\\imynn\\source\\repos\\Antivirus\\BaseEditor\\Ghosts.dbs");
+	std::filesystem::path p(SOLUTION_DIR);
+	p += "BaseEditor\\Ghosts.dbs";
+	Bases base(p.u16string());
 	while (true)
 	{
 		if (ReadFile(ServiceInstance->hPipe, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
@@ -178,7 +188,7 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 				}
 				if (check == 6)
 				{
-					base.updateBase(u"C:\\Users\\imynn\\source\\repos\\Antivirus\\BaseEditor\\Ghosts.dbs");
+					base.updateBase(p.u16string());
 				}
 				break;
 			}
@@ -235,13 +245,23 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 			{
 
 				TCHAR buf[MAX_PATH] = { 0 };
-				ReadPath(ServiceInstance->hPipe, buf);
+				std::filesystem::path path;
 				Scanner sc(base);
-
-				sc.Scan(buf);
+				path = ReadU16String(ServiceInstance->hPipe);
+				if (std::filesystem::is_directory(path))
+				{
+					for (const auto& entry : std::filesystem::directory_iterator(path))
+					{
+						path = entry.path();
+						sc.Scan(path.u16string());
+					}
+				}
+				else
+				{
+					sc.Scan(path.u16string());
+				}
 				std::u16string report = sc.getStatistics();
 				WriteU16String(ServiceInstance->hPipe, report);
-
 			}
 			}
 
@@ -264,14 +284,149 @@ DWORD WINAPI Service::WaitForPipe(LPVOID lpvParam)
 	ConnectNamedPipe(ServiceInstance->hPipe, NULL);
 	return 0;
 }
+
 VOID Service::SvcInit()
 {
 	ServiceInstance->ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 	// TO_DO Perform work
-
+	ServiceInstance->launchUI();
 	HANDLE threadPipe;
 	threadPipe = CreateThread(NULL, 0, WaitForPipe, NULL, 0, NULL);
-	ServiceInstance->launchUI();
 	WaitForSingleObject(threadPipe, INFINITE);
 	CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, NULL);
+}
+
+
+
+VOID WINAPI Service::DoUpdateSvcDacl(void)
+{
+	SC_HANDLE schSCManager;
+	SC_HANDLE schService;
+
+	EXPLICIT_ACCESS      ea;
+	SECURITY_DESCRIPTOR  sd;
+	PSECURITY_DESCRIPTOR psd = NULL;
+	PACL                 pacl = NULL;
+	PACL                 pNewAcl = NULL;
+	BOOL                 bDaclPresent = FALSE;
+	BOOL                 bDaclDefaulted = FALSE;
+	DWORD                dwError = 0;
+	DWORD                dwSize = 0;
+	DWORD                dwBytesNeeded = 0;
+	schSCManager = OpenSCManager(
+		NULL,                    // local computer
+		NULL,                    // ServicesActive database 
+		SC_MANAGER_ALL_ACCESS);  // full access rights 
+
+	if (NULL == schSCManager)
+	{
+		printf("OpenSCManager failed (%d)\n", GetLastError());
+		return;
+	}
+
+	// Get a handle to the service
+
+	schService = OpenService(
+		schSCManager,              // SCManager database 
+		SVCNAME,                 // name of service 
+		READ_CONTROL | WRITE_DAC); // access
+
+	if (schService == NULL)
+	{
+		printf("OpenService failed (%d)\n", GetLastError());
+		CloseServiceHandle(schSCManager);
+		return;
+	}
+
+	// Get the current security descriptor.
+
+	if (!QueryServiceObjectSecurity(schService,
+		DACL_SECURITY_INFORMATION,
+		&psd,           // using NULL does not work on all versions
+		0,
+		&dwBytesNeeded))
+	{
+		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+		{
+			dwSize = dwBytesNeeded;
+			psd = (PSECURITY_DESCRIPTOR)HeapAlloc(GetProcessHeap(),
+				HEAP_ZERO_MEMORY, dwSize);
+			if (psd == NULL)
+			{
+				// Note: HeapAlloc does not support GetLastError.
+				printf("HeapAlloc failed\n");
+				goto dacl_cleanup;
+			}
+
+			if (!QueryServiceObjectSecurity(schService,
+				DACL_SECURITY_INFORMATION, psd, dwSize, &dwBytesNeeded))
+			{
+				printf("QueryServiceObjectSecurity failed (%d)\n", GetLastError());
+				goto dacl_cleanup;
+			}
+		}
+		else
+		{
+			printf("QueryServiceObjectSecurity failed (%d)\n", GetLastError());
+			goto dacl_cleanup;
+		}
+	}
+
+	// Get the DACL.
+
+	if (!GetSecurityDescriptorDacl(psd, &bDaclPresent, &pacl,
+		&bDaclDefaulted))
+	{
+		printf("GetSecurityDescriptorDacl failed(%d)\n", GetLastError());
+		goto dacl_cleanup;
+	}
+
+	// Build the ACE.
+	memset(&ea, 0, sizeof(ea));
+	BuildExplicitAccessWithName(&ea, TEXT("CURRENT_USER"),
+		SERVICE_START,
+		SET_ACCESS, NO_INHERITANCE);
+
+	dwError = SetEntriesInAcl(1, &ea, pacl, &pNewAcl);
+	if (dwError != ERROR_SUCCESS)
+	{
+		printf("SetEntriesInAcl failed(%d)\n", dwError);
+		goto dacl_cleanup;
+	}
+
+	// Initialize a new security descriptor.
+
+	if (!InitializeSecurityDescriptor(&sd,
+		SECURITY_DESCRIPTOR_REVISION))
+	{
+		printf("InitializeSecurityDescriptor failed(%d)\n", GetLastError());
+		goto dacl_cleanup;
+	}
+
+	// Set the new DACL in the security descriptor.
+
+	if (!SetSecurityDescriptorDacl(&sd, TRUE, pNewAcl, FALSE))
+	{
+		printf("SetSecurityDescriptorDacl failed(%d)\n", GetLastError());
+		goto dacl_cleanup;
+	}
+
+	// Set the new DACL for the service object.
+
+	if (!SetServiceObjectSecurity(schService,
+		DACL_SECURITY_INFORMATION, &sd))
+	{
+		printf("SetServiceObjectSecurity failed(%d)\n", GetLastError());
+		goto dacl_cleanup;
+	}
+	else printf("Service DACL updated successfully\n");
+
+dacl_cleanup:
+	CloseServiceHandle(schSCManager);
+	CloseServiceHandle(schService);
+
+	if (NULL != pNewAcl)
+		LocalFree((HLOCAL)pNewAcl);
+	if (NULL != psd)
+		HeapFree(GetProcessHeap(), 0, (LPVOID)psd);
 }

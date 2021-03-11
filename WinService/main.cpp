@@ -1,6 +1,6 @@
 #include "Service.h"
-
-int main(int argc,TCHAR* argv[])
+#include <tchar.h>
+int _tmain(int argc,TCHAR* argv[])
 {
 	Service* svc = new Service;
 	Service::setServiceInstance(svc);
