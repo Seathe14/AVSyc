@@ -30,10 +30,16 @@ void Service::ServiceProcess(int argc, TCHAR* argv[])
 		{SVCNAME,(LPSERVICE_MAIN_FUNCTION)Service::MainProcess},
 		{NULL,NULL}
 	};
+	ServiceInstance->startSvc();
 	if (!StartServiceCtrlDispatcher(DispatchTable))
 	{
 		SvcReportEvent(TEXT("StartServiceCtrlDispatcher"));
 	}
+	//SC_HANDLE schSCManager;
+	//SC_HANDLE schService;
+	//schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	//schService = OpenService(schSCManager, SVCNAME, SERVICE_ALL_ACCESS);
+	//StartServiceA(schService, NULL, NULL);
 }
 
 void Service::SvcInstall()
@@ -75,6 +81,7 @@ void Service::setServiceInstance(Service* Instance)
 
 void Service::MainProcess()
 {
+	//ServiceInstance->startSvc();
 	ServiceInstance->gSvcStatusHandle = RegisterServiceCtrlHandler(SVCNAME, (LPHANDLER_FUNCTION)Service::SvcCtrlHandler);
 	if (!ServiceInstance->gSvcStatusHandle)
 	{
@@ -248,20 +255,24 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 				std::filesystem::path path;
 				Scanner sc(base);
 				path = ReadU16String(ServiceInstance->hPipe);
-				if (std::filesystem::is_directory(path))
+				sc.Scan(path);
+				std::u16string report = sc.getStatistics();
+				if (report.length() > 1024)
 				{
-					for (const auto& entry : std::filesystem::directory_iterator(path))
+					int numofParts = report.length() % 1024 ? report.length() / 1024 + 1 : report.length() / 1024;
+					Writeuint32_t(ServiceInstance->hPipe, numofParts);
+					for (int i = 0; i < numofParts; i++)
 					{
-						path = entry.path();
-						sc.Scan(path.u16string());
+						std::u16string partToSend = report.substr(i * 1024, 1024);
+						WriteU16String(ServiceInstance->hPipe, partToSend);
 					}
 				}
 				else
 				{
-					sc.Scan(path.u16string());
+					Writeint32_t(ServiceInstance->hPipe, 1);
+					WriteU16String(ServiceInstance->hPipe, report);
+
 				}
-				std::u16string report = sc.getStatistics();
-				WriteU16String(ServiceInstance->hPipe, report);
 			}
 			}
 
@@ -283,6 +294,22 @@ DWORD WINAPI Service::WaitForPipe(LPVOID lpvParam)
 	ServiceInstance->hPipe = CreateNamedPipe(ServiceInstance->lpszPipeName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
 	ConnectNamedPipe(ServiceInstance->hPipe, NULL);
 	return 0;
+}
+
+VOID Service::startSvc()
+{
+	SERVICE_STATUS_PROCESS ssStatus;
+	SC_HANDLE schSCManager;
+	SC_HANDLE schService;
+	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	schService = OpenService(schSCManager, SVCNAME, SERVICE_ALL_ACCESS);
+
+
+	StartServiceA(schService, NULL, NULL);
+
+	CloseServiceHandle(schSCManager);
+	CloseServiceHandle(schService);
+
 }
 
 VOID Service::SvcInit()

@@ -47,9 +47,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\imynn\source\repos\Antivirus\zipper;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\imynn\source\repos\Antivirus\zipper\build\Debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\imynn\source\repos\Antivirus\zipper;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\imynn\source\repos\Antivirus\zipper\build\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -59,16 +63,22 @@
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SolutionDir)SHA256\include;$(SolutionDir)ReadWriteLib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SHA256\include;$(SolutionDir)ReadWriteLib;$(SolutionDir)Antivirus\zipper\zipper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>
       </EntryPointSymbol>
+      <AdditionalDependencies>C:\vcpkg-2020.11-1\packages\zlib_x64-windows\debug\lib\zlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\imynn\source\repos\Antivirus\zipper\build\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -79,7 +89,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);SOLUTION_DIR=R"($(SolutionDir))"</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)SHA256\include;$(SolutionDir)ReadWriteLib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SHA256\include;$(SolutionDir)ReadWriteLib;$(SolutionDir)Antivirus\zipper\zipper;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
@@ -96,6 +106,7 @@
     <ClCompile Include="..\SHA256\src\SHA256.cpp" />
     <ClCompile Include="Bases.cpp" />
     <ClCompile Include="BasesLoader.cpp" />
+    <ClCompile Include="ScanEngine.cpp" />
     <ClCompile Include="Scanner.cpp" />
     <ClCompile Include="Service.cpp" />
     <ClCompile Include="main.cpp" />
@@ -109,6 +120,7 @@
     <ClInclude Include="..\SHA256\include\SHA256.h" />
     <ClInclude Include="Bases.h" />
     <ClInclude Include="BasesLoader.h" />
+    <ClInclude Include="ScanEngine.h" />
     <ClInclude Include="Scanner.h" />
     <ClInclude Include="Service.h" />
   </ItemGroup>

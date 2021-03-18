@@ -21,6 +21,7 @@ private:
 	VOID ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint);
 	static DWORD WINAPI AcceptMessages(LPVOID lpvParam);
 	static DWORD WINAPI WaitForPipe(LPVOID lpvParam);
+	VOID startSvc();
 	VOID WINAPI DoUpdateSvcDacl(void);
 	static inline Service* ServiceInstance;
 

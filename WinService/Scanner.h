@@ -2,17 +2,18 @@
 #include "Bases.h"
 #include <filesystem>
 #include <algorithm>
+#include <zipper/zipper.h>
+#include <zipper/unzipper.h>
+#pragma comment(lib,"Zipper-staticd.lib")
+
 class Scanner
 {
 public:
 	Scanner(Bases& base);
 	void Scan(const std::filesystem::path& path);
-	void updateString(std::ifstream& ifs);
+
 	std::u16string getStatistics() { return statistics; }
 private:
 	Bases base;
-	std::string contents;
-	uint64_t bufferSize = 1 << 20;
-	std::u16string virusName;
 	std::u16string statistics;
 };

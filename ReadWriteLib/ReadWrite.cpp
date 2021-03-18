@@ -126,7 +126,7 @@ std::u16string ReadU16String(HANDLE hPipe)
 {
 	uint16_t length = Readuint16_t(hPipe);
 	DWORD cbRead;
-	char16_t cstr[512];
+	char16_t cstr[2048];
 	ReadFile(hPipe, cstr, length*sizeof(char16_t), &cbRead, NULL);
 	cstr[length] = '\0';
 	return std::u16string(cstr);

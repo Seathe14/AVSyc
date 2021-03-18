@@ -1,52 +1,44 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <windows.h>
 #include "Scanner.h"
 #include <string>
-#include <codecvt>
+#include "ScanEngine.h"
 Scanner::Scanner(Bases &base)
 {
 	this->base = base;
-	contents.resize(bufferSize);
 }
+using namespace zipper;
+
+// std::string UTF8ToANSI(std::string s)
+// {
+// 	BSTR    bstrWide;
+// 	char* pszAnsi;
+// 	int     nLength;
+// 	const char* pszCode = s.c_str();
+// 
+// 	nLength = MultiByteToWideChar(CP_UTF8, 0, pszCode, strlen(pszCode) + 1, NULL, NULL);
+// 	bstrWide = SysAllocStringLen(NULL, nLength);
+// 
+// 	MultiByteToWideChar(CP_UTF8, 0, pszCode, strlen(pszCode) + 1, bstrWide, nLength);
+// 
+// 	nLength = WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, NULL, 0, NULL, NULL);
+// 	pszAnsi = new char[nLength];
+// 
+// 	WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, pszAnsi, nLength, NULL, NULL);
+// 	SysFreeString(bstrWide);
+// 
+// 	std::string r(pszAnsi);
+// 	delete[] pszAnsi;
+// 	return r;
+// }
 
 void Scanner::Scan(const std::filesystem::path& path)
 {
-	memset(&contents[0], 0, bufferSize);
-	std::ifstream ifs(path.wstring(), std::ios::binary);
-	ifs.seekg(0, std::ios::end);
-	std::streamsize size = ifs.tellg();
-	ifs.seekg(0, std::ios::beg);
-	size_t offStart = 0;
-	ifs.read(&contents[0], bufferSize);
-	uint64_t iterNum = size % bufferSize ? size / bufferSize + 1 : size / bufferSize;
-	//size_t j;
-	int numofViruses = 0;
-	if (contents[0] != 'M' && contents[1] != 'Z')
+	ScanEngine scanEngine(path, base);
+	if (std::filesystem::is_directory(path))
 	{
-		statistics += u"File is not infected\n";
+		scanEngine.ScanFolder(statistics);
 		return;
 	}
-	for (int i = 0; i < iterNum; i++)
-	{
-		for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
-		{
-			if (base.find((uint8_t*)&contents[j], offStart, virusName))
-			{
-				statistics += virusName;
-				statistics += u" in " + path.u16string() + u"\n"; 
-				numofViruses++;
-			}
-			offStart++;
-		}
-		updateString(ifs);
-	}
-	if (numofViruses == 0)
-	{
-		statistics += u"File is not infected\n";
-	}
+	scanEngine.ScanFile(statistics);
 }
-
-void Scanner::updateString(std::ifstream& ifs)
-{
-	std::copy(contents.end() - MINSIGLENGTH, contents.end(), contents.begin());
-	ifs.read(&contents[0] + MINSIGLENGTH, bufferSize - MINSIGLENGTH);
-}
-

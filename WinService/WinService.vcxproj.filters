@@ -9,10 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Service">
       <UniqueIdentifier>{a677c146-1124-46d0-b09b-ea5f9f7725dd}</UniqueIdentifier>
     </Filter>
@@ -42,6 +38,9 @@
     <ClCompile Include="..\SHA256\src\SHA256.cpp">
       <Filter>SHA256</Filter>
     </ClCompile>
+    <ClCompile Include="ScanEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bases.h">
@@ -58,6 +57,9 @@
     </ClInclude>
     <ClInclude Include="..\SHA256\include\SHA256.h">
       <Filter>SHA256</Filter>
+    </ClInclude>
+    <ClInclude Include="ScanEngine.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -50,9 +50,13 @@ void MainWindow::scan()
 	Writeint8_t(hPipe, codes::codes::PATH);
 	std::u16string toSend = ui->pathLineEdit->text().toStdU16String();
 	WriteU16String(hPipe, toSend);
-	std::u16string stat = ReadU16String(hPipe);
-	if (stat != u"")
-		output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+	int numofParts = Readuint32_t(hPipe);
+	for (int i = 0; i < numofParts; i++)
+	{
+		std::u16string stat = ReadU16String(hPipe);
+		if (stat != u"")
+			output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+	}
 }
 
 
