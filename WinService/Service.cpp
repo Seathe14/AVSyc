@@ -5,8 +5,10 @@
 #include <WtsApi32.h>
 #include <userenv.h>
 #include "Scanner.h"
+#include "ScheduleScanner.h"
 #include <aclapi.h>
 #include <ReadWrite.h>
+#include <thread>
 #pragma comment(lib,"wtsapi32.lib")
 #pragma comment(lib,"userenv.lib")
 #define BUFSIZE 2048
@@ -147,6 +149,25 @@ VOID Service::ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD
 	SetServiceStatus(gSvcStatusHandle, &gSvcStatus);
 }
 
+void Service::sendStatistics(const std::u16string &reportToSend)
+{
+	if (reportToSend.length() > 1024)
+	{
+		int numofParts = reportToSend.length() % 1024 ? reportToSend.length() / 1024 + 1 : reportToSend.length() / 1024;
+		Writeuint32_t(ServiceInstance->hPipe, numofParts);
+		for (int i = 0; i < numofParts; i++)
+		{
+			std::u16string partToSend = reportToSend.substr(i * 1024, 1024);
+			WriteU16String(ServiceInstance->hPipe, partToSend);
+		}
+	}
+	else
+	{
+		Writeint32_t(ServiceInstance->hPipe, 1);
+		WriteU16String(ServiceInstance->hPipe, reportToSend);
+	}
+}
+
 void Service::launchUI()
 {
 	std::filesystem::path p1(SOLUTION_DIR);
@@ -172,6 +193,7 @@ void Service::launchUI()
 
 DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 {
+	//HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, L"StatEvent");
 	DWORD cbRead, cbWritten;
 	UCHAR code;
 	std::filesystem::path p(SOLUTION_DIR);
@@ -183,96 +205,31 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 		{
 			switch (code)
 			{
-			case codes::codes::INT8:
-			{
-				int8_t check;
-				check = Readint8_t(ServiceInstance->hPipe);
-				Writeint8_t(ServiceInstance->hPipe, check);
-				if (check == 5)
-				{
-					ServiceInstance->ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
-					return 0;
-				}
-				if (check == 6)
-				{
-					base.updateBase(p.u16string());
-				}
-				break;
-			}
-			case codes::codes::INT16:
-			{
-				int16_t check;
-				check = Readint16_t(ServiceInstance->hPipe);
-				Writeint16_t(ServiceInstance->hPipe, check);
-				break;
-			}
-			case codes::codes::INT32:
-			{
-				int32_t check;
-				check = Readint32_t(ServiceInstance->hPipe);
-				Writeint32_t(ServiceInstance->hPipe, check);
-				break;
-			}
 			case codes::codes::INT64:
 			{
-				int64_t check;
-				check = Readint64_t(ServiceInstance->hPipe);
-				Writeint64_t(ServiceInstance->hPipe, check);
-				break;
-			}
-			case codes::codes::UINT8:
-			{
-				uint8_t check;
-				check = Readuint8_t(ServiceInstance->hPipe);
-				Writeuint8_t(ServiceInstance->hPipe, check);
-				break;
-			}
-			case codes::codes::UINT16:
-			{
-				uint16_t check;
-				check = Readuint16_t(ServiceInstance->hPipe);
-				Writeuint16_t(ServiceInstance->hPipe, check);
-				break;
-			}
-			case codes::codes::UINT32:
-			{
-				uint32_t check;
-				check = Readuint32_t(ServiceInstance->hPipe);
-				Writeuint32_t(ServiceInstance->hPipe, check);
-				break;
-			}
-			case codes::codes::UINT64:
-			{
 				uint64_t check;
-				check = Readuint64_t(ServiceInstance->hPipe);
-				Writeuint64_t(ServiceInstance->hPipe, check);
+				int64_t time = Readint64_t(ServiceInstance->hPipe);
+				ScheduleScanner scScanner(time);
+				std::filesystem::path path;
+				path = ReadU16String(ServiceInstance->hPipe);
+				scScanner.setPath(path);
+				std::thread t1(&ScheduleScanner::doWork, &scScanner);
+				t1.detach();
+				scScanner.sendStatistics(ServiceInstance->hPipe);
+// 				std::u16string report = scScanner.getStatistics();
+// 				ServiceInstance->sendStatistics(report);
 				break;
 			}
 			case codes::codes::PATH:
 			{
 
-				TCHAR buf[MAX_PATH] = { 0 };
 				std::filesystem::path path;
 				Scanner sc(base);
 				path = ReadU16String(ServiceInstance->hPipe);
 				sc.Scan(path);
 				std::u16string report = sc.getStatistics();
-				if (report.length() > 1024)
-				{
-					int numofParts = report.length() % 1024 ? report.length() / 1024 + 1 : report.length() / 1024;
-					Writeuint32_t(ServiceInstance->hPipe, numofParts);
-					for (int i = 0; i < numofParts; i++)
-					{
-						std::u16string partToSend = report.substr(i * 1024, 1024);
-						WriteU16String(ServiceInstance->hPipe, partToSend);
-					}
-				}
-				else
-				{
-					Writeint32_t(ServiceInstance->hPipe, 1);
-					WriteU16String(ServiceInstance->hPipe, report);
-
-				}
+				//SetEvent(hEvent);
+				ServiceInstance->sendStatistics(report);
 			}
 			}
 

@@ -100,6 +100,7 @@
       <EntryPointSymbol>
       </EntryPointSymbol>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <AdditionalDependencies>C:\vcpkg-2020.11-1\packages\zlib_x64-windows\lib\zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -108,6 +109,8 @@
     <ClCompile Include="BasesLoader.cpp" />
     <ClCompile Include="ScanEngine.cpp" />
     <ClCompile Include="Scanner.cpp" />
+    <ClCompile Include="ScanObject.cpp" />
+    <ClCompile Include="ScheduleScanner.cpp" />
     <ClCompile Include="Service.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -122,6 +125,8 @@
     <ClInclude Include="BasesLoader.h" />
     <ClInclude Include="ScanEngine.h" />
     <ClInclude Include="Scanner.h" />
+    <ClInclude Include="ScanObject.h" />
+    <ClInclude Include="ScheduleScanner.h" />
     <ClInclude Include="Service.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

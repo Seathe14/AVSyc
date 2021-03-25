@@ -27,17 +27,31 @@ std::string ANSIToUTF8(std::string str)
 	delete[] cres;
 	return res;
 }
-void ScanEngine::ScanZip(std::u16string& stat)
+
+void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 {
 	memset(&contents[0], 0, bufferSize);
-	Unzipper unzipper(path.string());
-	std::vector<ZipEntry> entries = unzipper.entries();
+	Unzipper* unzip;
+	if (scanObj.sstream != nullptr)
+	{
+		try {
+		unzip = new Unzipper(*scanObj.sstream);
+		}
+		catch (std::runtime_error err) {
+			return;
+		}
+	}
+	else
+	{
+		unzip = new Unzipper(scanObj.getPath().string());
+	}
+	std::vector<ZipEntry> entries = unzip->entries();
 	int numofViruses = 0;
 	for (int i = 0; i < entries.size(); i++)
 	{
 		std::stringstream ss;
 		memset(&contents[0], 0, bufferSize);
-		unzipper.extractEntryToStream(entries[i].name, ss);
+		unzip->extractEntryToStream(entries[i].name, ss);
 		ss.seekg(0, std::ios::end);
 		std::streamsize size = ss.tellg();
 		ss.seekg(0, std::ios::beg);
@@ -45,8 +59,9 @@ void ScanEngine::ScanZip(std::u16string& stat)
 		ss.read(&contents[0], bufferSize);
 		if (contents[0] == 'P' && contents[1] == 'K')
 		{
-			ScanZip(stat,ss);
-			continue;;
+			scanObj.sstream = &ss;
+			ScanZip(scanObj, stat);
+			continue;
 		}
 		else if (contents[0] != 'M' && contents[1] != 'Z')
 		{
@@ -54,7 +69,6 @@ void ScanEngine::ScanZip(std::u16string& stat)
 			continue;
 		}
 		uint64_t iterNum = size % bufferSize ? size / bufferSize + 1 : size / bufferSize;
-
 
 		for (int i = 0; i < iterNum; i++)
 		{
@@ -75,77 +89,42 @@ void ScanEngine::ScanZip(std::u16string& stat)
 			statistics += u"File is not infected\n";
 		}
 	}
-	unzipper.close();
+	unzip->close();
+	delete unzip;
 	stat = statistics;
 }
 
-
-void ScanEngine::ScanZip(std::u16string& stat, std::istream& is)
+void ScanEngine::ScanPath(ScanObject scanObj, std::u16string& stat)
 {
-	memset(&contents[0], 0, bufferSize);
-	Unzipper unzipper(is);
-	std::vector<ZipEntry> entries = unzipper.entries();
-	int numofViruses = 0;
-	for (int i = 0; i < entries.size(); i++)
+	if (scanObj.type == OBJDIR)
 	{
-		std::stringstream ss;
-		memset(&contents[0], 0, bufferSize);
-		unzipper.extractEntryToStream(entries[i].name, ss);
-		ss.seekg(0, std::ios::end);
-		std::streamsize size = ss.tellg();
-		ss.seekg(0, std::ios::beg);
-		size_t offStart = 0;
-		ss.read(&contents[0], bufferSize);
-		if (contents[0] == 'P' && contents[1] == 'K')
-		{
-			ScanZip(stat, ss);
-			continue;;
-		}
-		else if (contents[0] != 'M' && contents[1] != 'Z')
-		{
-			statistics += u"File is not infected\n";
+		ScanFolder(scanObj, stat);
+	}
+	else if (scanObj.type == OBJFILE)
+	{
+		ScanFile(scanObj, stat);
+	}
+}
+
+void ScanEngine::ScanFolder(ScanObject scanObj, std::u16string& stat)
+{
+	for (const auto& entry : std::filesystem::recursive_directory_iterator(scanObj.getPath()))
+	{
+		if (std::filesystem::is_directory(entry))
 			continue;
-		}
-		uint64_t iterNum = size % bufferSize ? size / bufferSize + 1 : size / bufferSize;
+ 		path = entry.path();
+		ScanObject scanObject(path);
+		//scanObject.setPath(path);
 
-
-		for (int i = 0; i < iterNum; i++)
-		{
-			for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
-			{
-				if (base.find((uint8_t*)&contents[j], offStart, virusName))
-				{
-					statistics += virusName;
-					statistics += u" in " + path.u16string() + u"\n";
-					numofViruses++;
-				}
-				offStart++;
-			}
-			updateString(ss);
-		}
-		if (numofViruses == 0)
-		{
-			statistics += u"File is not infected\n";
-		}
-	}
-	unzipper.close();
-	stat = statistics;
-}
-
-void ScanEngine::ScanFolder(std::u16string& stat)
-{
-	for (const auto& entry : std::filesystem::directory_iterator(path))
-	{
-		path = entry.path();
-		this->path = path;
-		ScanFile(stat);
+// 		this->path = path;
+		ScanFile(scanObject,stat);
 	}
 }
 
-void ScanEngine::ScanFile(std::u16string &stat)
+void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 {
 	memset(&contents[0], 0, bufferSize);
-	std::ifstream ifs(path.wstring(), std::ios::binary);
+	std::ifstream ifs(scanObj.getPath().wstring(), std::ios::binary);
 	ifs.seekg(0, std::ios::end);
 	std::streamsize size = ifs.tellg();
 	ifs.seekg(0, std::ios::beg);
@@ -153,7 +132,9 @@ void ScanEngine::ScanFile(std::u16string &stat)
 	ifs.read(&contents[0], bufferSize);
 	if (contents[0] == 'P' && contents[1] == 'K')
 	{
-		ScanZip(stat);
+		ScanObject scanObject(scanObj.getPath());
+		scanObj.type = OBJZIP;
+		ScanZip(scanObj,stat);
 		return;
 	}
 	else if(contents[0] != 'M' && contents[1] != 'Z')
@@ -173,7 +154,7 @@ void ScanEngine::ScanFile(std::u16string &stat)
 			if (base.find((uint8_t*)&contents[j], offStart, virusName))
 			{
 				statistics += virusName;
-				statistics += u" in " + path.u16string() + u"\n";
+				statistics += u" in " + scanObj.getPath().u16string() + u"\n";
 				numofViruses++;
 			}
 			offStart++;

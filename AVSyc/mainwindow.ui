@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>480</width>
-    <height>346</height>
+    <width>439</width>
+    <height>414</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -74,7 +74,7 @@
      <string>Browse</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="startScan">
+   <widget class="QPushButton" name="startScanButton">
     <property name="geometry">
      <rect>
       <x>320</x>
@@ -87,13 +87,52 @@
      <string>Scan</string>
     </property>
    </widget>
+   <widget class="QDateTimeEdit" name="dateTimeEdit">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>340</y>
+      <width>194</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="timeSpec">
+     <enum>Qt::LocalTime</enum>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="browseButton_2">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>340</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Set</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="pathLineEdit_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>310</y>
+      <width>299</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>480</width>
+     <width>439</width>
      <height>20</height>
     </rect>
    </property>

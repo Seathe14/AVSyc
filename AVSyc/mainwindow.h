@@ -23,15 +23,17 @@ private slots:
 
     void on_startScanButton_clicked();
 
+    void on_browseButton_2_clicked();
+
 private:
     Ui::MainWindow *ui;
     HANDLE hPipe;
 	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
-
+    HANDLE hEvent;
 
 private:
     void connectPipe();
-    void scan();
+    void scan(bool scheduled);
 signals:
 	void output(const QString& toAppend);
 };

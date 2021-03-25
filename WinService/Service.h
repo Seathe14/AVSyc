@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include "sample.h"
+#include <string>
 #ifndef NDEBUG
 #define SVCNAME TEXT("AVSycDbg")
 #else
@@ -29,6 +30,7 @@ private:
 	SERVICE_STATUS gSvcStatus;
 	SERVICE_STATUS_HANDLE gSvcStatusHandle;
 
+	void sendStatistics(const std::u16string &reportToSend);
 	void launchUI();
 	VOID SvcInit();
 

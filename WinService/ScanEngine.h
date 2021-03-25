@@ -5,7 +5,12 @@
 #include <zipper/zipper.h>
 #include <zipper/unzipper.h>
 #include "Bases.h"
+#include "ScanObject.h"
+#if _DEBUG
 #pragma comment(lib,"Zipper-staticd.lib")
+#else
+#pragma comment(lib,"Zipper-static.lib")
+#endif
 
 #define MINSIGLENGTH 8
 class ScanEngine
@@ -18,11 +23,10 @@ public:
 	{
 		contents.resize(bufferSize);
 	}
-	void ScanZip(std::u16string& stat);
-	void ScanZip(std::u16string& stat,std::istream &is);
-
-	void ScanFolder(std::u16string& stat);
-	void ScanFile(std::u16string &stat);
+	void ScanZip(ScanObject scanObj, std::u16string& stat);
+	void ScanPath(ScanObject scanObj, std::u16string& stat);
+	void ScanFolder(ScanObject scanObj, std::u16string& stat);
+	void ScanFile(ScanObject scanObj, std::u16string &stat);
 
 private:
 	std::filesystem::path path;

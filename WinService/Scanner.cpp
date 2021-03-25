@@ -1,8 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include "Scanner.h"
-#include <string>
-#include "ScanEngine.h"
+
 Scanner::Scanner(Bases &base)
 {
 	this->base = base;
@@ -35,10 +34,7 @@ using namespace zipper;
 void Scanner::Scan(const std::filesystem::path& path)
 {
 	ScanEngine scanEngine(path, base);
-	if (std::filesystem::is_directory(path))
-	{
-		scanEngine.ScanFolder(statistics);
-		return;
-	}
-	scanEngine.ScanFile(statistics);
+	ScanObject scanObj;
+	scanObj.setPath(path);
+	scanEngine.ScanPath(scanObj,statistics);
 }

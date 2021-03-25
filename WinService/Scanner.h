@@ -2,9 +2,12 @@
 #include "Bases.h"
 #include <filesystem>
 #include <algorithm>
+#include <string>
+#include "ScanEngine.h"
+#include "ScanObject.h"
 #include <zipper/zipper.h>
 #include <zipper/unzipper.h>
-#pragma comment(lib,"Zipper-staticd.lib")
+
 
 class Scanner
 {
