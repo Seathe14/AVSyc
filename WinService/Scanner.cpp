@@ -33,8 +33,10 @@ using namespace zipper;
 
 void Scanner::Scan(const std::filesystem::path& path)
 {
+	mtx.lock();
 	ScanEngine scanEngine(path, base);
 	ScanObject scanObj;
 	scanObj.setPath(path);
 	scanEngine.ScanPath(scanObj,statistics);
+	mtx.unlock();
 }

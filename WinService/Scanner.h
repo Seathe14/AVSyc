@@ -7,7 +7,7 @@
 #include "ScanObject.h"
 #include <zipper/zipper.h>
 #include <zipper/unzipper.h>
-
+#include <mutex>
 
 class Scanner
 {
@@ -18,5 +18,6 @@ public:
 	std::u16string getStatistics() { return statistics; }
 private:
 	Bases base;
+	static inline std::mutex mtx;
 	std::u16string statistics;
 };

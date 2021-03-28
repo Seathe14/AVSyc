@@ -28,7 +28,13 @@ private slots:
 private:
     Ui::MainWindow *ui;
     HANDLE hPipe;
+	HANDLE hPipeScheduled;
+    HANDLE hPipeOper;
+
 	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
+	LPCTSTR lpszScPipeName = TEXT("\\\\.\\pipe\\IPCScheduledPipe");
+	LPCTSTR lpszPipeOperName = TEXT("\\\\.\\pipe\\IPCOperPipe");
+
     HANDLE hEvent;
 
 private:

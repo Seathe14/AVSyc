@@ -8,17 +8,18 @@
 class ScheduleScanner
 {
 public:
-	ScheduleScanner(int64_t scTime);
-	void setPath(const std::filesystem::path& path) { this->path = path; }
+	ScheduleScanner(int64_t scTime,HANDLE hPipe, std::u16string &lr);
+	void setPath(HANDLE hPipe);
 	void doWork();
 	void sendStatistics(HANDLE hPipe);
-	std::u16string getStatistics() { return statistics; }
+	//std::u16string getStatistics() { return statistics; }
 
 private:
 	std::filesystem::path path;
 	std::chrono::seconds scheduledTime;
 	std::chrono::seconds currTime;
-	std::u16string statistics;
+	std::u16string* statistics;
+	HANDLE pipe;
 	bool finished = false;
 };
 

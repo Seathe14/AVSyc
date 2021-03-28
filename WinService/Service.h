@@ -36,7 +36,11 @@ private:
 
 private:
 	HANDLE hPipe;
+	HANDLE hPipeScheduled;
+	HANDLE hPipeOper;
 	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
+	LPCTSTR lpszScPipeName = TEXT("\\\\.\\pipe\\IPCScheduledPipe");
+	LPCTSTR lpszPipeOperName = TEXT("\\\\.\\pipe\\IPCOperPipe");
 
 };
 

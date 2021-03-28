@@ -6,8 +6,10 @@
 #include <userenv.h>
 #include "Scanner.h"
 #include "ScheduleScanner.h"
+#include <future>
 #include <aclapi.h>
 #include <ReadWrite.h>
+#include <Operations.h>
 #include <thread>
 #pragma comment(lib,"wtsapi32.lib")
 #pragma comment(lib,"userenv.lib")
@@ -199,45 +201,68 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 	std::filesystem::path p(SOLUTION_DIR);
 	p += "BaseEditor\\Ghosts.dbs";
 	Bases base(p.u16string());
+	static std::u16string lastResult;
+	std::mutex mtx;
+
 	while (true)
 	{
-		if (ReadFile(ServiceInstance->hPipe, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
+		if (ReadFile(ServiceInstance->hPipeOper, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
 		{
 			switch (code)
 			{
-			case codes::codes::INT64:
-			{
-				uint64_t check;
-				int64_t time = Readint64_t(ServiceInstance->hPipe);
-				ScheduleScanner scScanner(time);
-				std::filesystem::path path;
-				path = ReadU16String(ServiceInstance->hPipe);
-				scScanner.setPath(path);
-				std::thread t1(&ScheduleScanner::doWork, &scScanner);
-				t1.detach();
-				scScanner.sendStatistics(ServiceInstance->hPipe);
-// 				std::u16string report = scScanner.getStatistics();
-// 				ServiceInstance->sendStatistics(report);
-				break;
-			}
-			case codes::codes::PATH:
+			case Operation::SCANSCHEDULED:
 			{
 
+				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
+				ScheduleScanner* scScanner = new ScheduleScanner(time,ServiceInstance->hPipeScheduled,lastResult);
+				//std::filesystem::path path;
+				scScanner->setPath(ServiceInstance->hPipeScheduled);
+				std::thread t1(&ScheduleScanner::doWork, scScanner);
+				t1.detach();
+				break;
+			}
+			case Operation::SCANPATH:
+			{
 				std::filesystem::path path;
 				Scanner sc(base);
 				path = ReadU16String(ServiceInstance->hPipe);
 				sc.Scan(path);
-				std::u16string report = sc.getStatistics();
-				//SetEvent(hEvent);
-				ServiceInstance->sendStatistics(report);
+				Writeint8_t(ServiceInstance->hPipe, OperationResult::SUCCESS);
+				lastResult = sc.getStatistics();
+				break;
 			}
+			case Operation::GET_STATISTICS:
+				mtx.lock();
+				if (lastResult.length() > 1024)
+				{
+					int numofParts = lastResult.length() % 1024 ? lastResult.length() / 1024 + 1 : lastResult.length() / 1024;
+					Writeuint32_t(ServiceInstance->hPipeOper, numofParts);
+					for (int i = 0; i < numofParts; i++)
+					{
+						std::u16string partToSend = lastResult.substr(i * 1024, 1024);
+						WriteU16String(ServiceInstance->hPipeOper, partToSend);
+					}
+				}
+				else
+				{
+					Writeint32_t(ServiceInstance->hPipeOper, 1);
+					WriteU16String(ServiceInstance->hPipeOper, lastResult);
+				}
+				mtx.unlock();
+				//sendStatistics(lastResult);
+				//WriteU16String(ServiceInstance->hPipe, lastResult);
+				break;
 			}
 
 		}
 		else
 		{
 			DisconnectNamedPipe(ServiceInstance->hPipe);
+			DisconnectNamedPipe(ServiceInstance->hPipeScheduled);
+			DisconnectNamedPipe(ServiceInstance->hPipeOper);
+			ConnectNamedPipe(ServiceInstance->hPipeOper, NULL);
 			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
+			ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
 		}
 	}
 }
@@ -250,6 +275,10 @@ DWORD WINAPI Service::WaitForPipe(LPVOID lpvParam)
 	sa.lpSecurityDescriptor = &sd;
 	ServiceInstance->hPipe = CreateNamedPipe(ServiceInstance->lpszPipeName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
 	ConnectNamedPipe(ServiceInstance->hPipe, NULL);
+	ServiceInstance->hPipeScheduled = CreateNamedPipe(ServiceInstance->lpszScPipeName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
+	ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
+	ServiceInstance->hPipeOper = CreateNamedPipe(ServiceInstance->lpszPipeOperName, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, 0, &sa);
+	ConnectNamedPipe(ServiceInstance->hPipeOper, NULL);
 	return 0;
 }
 
