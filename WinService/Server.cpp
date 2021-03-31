@@ -31,22 +31,22 @@ void Server::launchUI()
 	CreateProcessAsUserW(token, p.c_str(), NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT, penv, NULL, &si, &pi);
 }
 
-void Server::sendStatistics(const std::u16string& reportToSend)
+void Server::sendStatistics(const std::u16string& reportToSend, HANDLE pipe)
 {
 	if (reportToSend.length() > 1024)
 	{
 		int numofParts = reportToSend.length() % 1024 ? reportToSend.length() / 1024 + 1 : reportToSend.length() / 1024;
-		Writeuint32_t(hPipe, numofParts);
+		Writeuint32_t(pipe, numofParts);
 		for (int i = 0; i < numofParts; i++)
 		{
 			std::u16string partToSend = reportToSend.substr(i * 1024, 1024);
-			WriteU16String(hPipe, partToSend);
+			WriteU16String(pipe, partToSend);
 		}
 	}
 	else
 	{
-		Writeint32_t(hPipe, 1);
-		WriteU16String(hPipe, reportToSend);
+		Writeint32_t(pipe, 1);
+		WriteU16String(pipe, reportToSend);
 	}
 }
 
@@ -131,7 +131,7 @@ void Server::AcceptPathMessages(ScanPathTask& scPathTask)
 				break;
 			case Operation::GET_STATISTICS:
 				std::u16string result = scPathTask.getTaskStatistic();
-				sendStatistics(result);
+				sendStatistics(result, hPipe);
 				break;
 
 			}
@@ -196,7 +196,7 @@ void Server::AcceptScheduleMessages(ScheduleScannerTask& scheduledScanner)
 				break;
 			case Operation::GET_STATISTICS:
 				std::u16string result = scheduledScanner.getTaskStatistic();
-				sendStatistics(result);
+				sendStatistics(result, hPipeScheduled);
 				break;
 			}
 		}
@@ -250,7 +250,7 @@ void Server::AcceptMonitorMessages(Monitor& monitorTask)
 				break;
 			case Operation::GET_STATISTICS:
 				std::u16string result = monitorTask.getTaskStatistic();
-				sendStatistics(result);
+				sendStatistics(result, hPipeMonitor);
 				break;
 			}
 		}

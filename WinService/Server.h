@@ -9,7 +9,7 @@ class Server
 {
 public:
 	void launchUI();
-	void sendStatistics(const std::u16string& reportToSend);
+	void sendStatistics(const std::u16string& reportToSend, HANDLE pipe);
 	void WaitForPipe();
 	void AcceptMessages();
 	void AcceptPathMessages(ScanPathTask& scPathTask);
