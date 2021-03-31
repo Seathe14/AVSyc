@@ -28,7 +28,22 @@ MainWindow::MainWindow(QWidget *parent)
 	CloseServiceHandle(os);
 	
 	t1.detach();
+
 	connect(this, &MainWindow::output, ui->resultTextEdit, &QTextEdit::insertPlainText);
+	connect(this, &MainWindow::writeText, ui->resultTextEdit, &QTextEdit::setText);
+	connect(this, &MainWindow::outputScheduled, ui->resultTextEdit_2, &QTextEdit::insertPlainText);
+	connect(this, &MainWindow::writeTextScheduled, ui->resultTextEdit_2, &QTextEdit::setText);
+	connect(this, &MainWindow::outputMonitor, ui->resultTextEdit_3, &QTextEdit::insertPlainText);
+	connect(this, &MainWindow::writeTextMonitor, ui->resultTextEdit_3, &QTextEdit::setText);
+	connect(this, &MainWindow::setScanStopButton, ui->stopButton, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setScanStartButton, ui->startScanButton, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setScheduleStopButton, ui->stopButton_2, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setScheduleSetButton, ui->setButton, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setStartMonitoringButton, ui->monitorButton, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setCancelMonitoringButton, ui->cancelMonitorButton, &QPushButton::setEnabled);
+
+	connect(this, &MainWindow::logAppend, ui->logTextEdit, &QTextEdit::append);
+
 }
 MainWindow::~MainWindow()
 {
@@ -55,63 +70,326 @@ void MainWindow::connectPipe()
 		Sleep(1);
 	}
 	hPipeOper = CreateFile(lpszPipeOperName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-	while (hPipeScheduled == INVALID_HANDLE_VALUE)
+	while (hPipeOper == INVALID_HANDLE_VALUE)
 	{
 		hPipeOper = CreateFile(lpszPipeOperName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 		Sleep(1);
 	}
-	//hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, L"StatEvent");
 }
-
 
 
 void MainWindow::scan(bool scheduled)
 {
 	if (!scheduled)
 	{
-		Writeint8_t(hPipeOper, Operation::SCANPATH);
+		// monitor test
+// 		Writeint8_t(hPipeOper, Operation::MONITOR);
+// 		std::u16string toSend = ui->pathLineEdit->text().toStdU16String();
+// 		WriteU16String(hPipeOper, toSend);
+// 		OperationResult oper = (OperationResult)Readint8_t(hPipeOper);
+// 		while(true)
+// 		{
+// 			if (oper != OperationResult::SUCCESS)
+// 			{
+// 				Sleep(1000);
+// 				while (oper == OperationResult::MONITORING)
+// 				{
+// 					Writeint8_t(hPipeOper, Operation::GET_STATE);
+// 					oper = (OperationResult)Readint8_t(hPipeOper);
+// 					output(".");
+// 					Sleep(1000);
+// 				}
+// 				writeText("");
+// 				Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
+// 				int numofParts = Readuint32_t(hPipeOper);
+// 				for (int i = 0; i < numofParts; i++)
+// 				{
+// 					std::u16string stat = ReadU16String(hPipeOper);
+// 					if (stat != u"")
+// 						output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+// 				}
+// 			}
+// 		}
+		// don't remove
+		Writeint8_t(hPipe, Operation::SCANPATH);
 		std::u16string toSend = ui->pathLineEdit->text().toStdU16String();
 		WriteU16String(hPipe, toSend);
-		OperationResult oper = (OperationResult)Readint8_t(hPipe);;
-		if (oper == OperationResult::SUCCESS)
+		OperationResult oper = (OperationResult)Readint8_t(hPipe);
+		OperationResult previousOper = oper;
+		if (oper == OperationResult::WAITING)
+			ui->scanStatusLabel->setText("Waiting");
+		if (oper != OperationResult::SUCCESS)
 		{
-			Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
-			int numofParts = Readuint32_t(hPipeOper);
+			Sleep(300);
+			while (oper!=OperationResult::SUCCESS)
+			{
+				if (toStopScan)
+				{
+					Writeint8_t(hPipe, Operation::STOP);
+					break;
+				}
+				Writeint8_t(hPipe, Operation::GET_STATE);
+				oper = (OperationResult)Readint8_t(hPipe);
+				if (oper == OperationResult::RUNNING)
+				{
+					if (previousOper != oper)
+						ui->scanStatusLabel->setText("Running");
+					output(".");
+				}
+				Sleep(1000);
+			}
+			writeText("");
+			Writeint8_t(hPipe, Operation::GET_STATISTICS);
+			int numofParts = Readuint32_t(hPipe);
 			for (int i = 0; i < numofParts; i++)
 			{
-				std::u16string stat = ReadU16String(hPipeOper);
+				std::u16string stat = ReadU16String(hPipe);
 				if (stat != u"")
 					output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
 			}
-		}
-	}
-	else
-	{
-		QTime qtime(ui->dateTimeEdit->time().hour(), ui->dateTimeEdit->time().minute(),0,0);
-		QDateTime qDateTime(ui->dateTimeEdit->date(), qtime);
-		qint64 secondsSinceEpoch = qDateTime.toSecsSinceEpoch();//ui->dateTimeEdit->dateTime().toSecsSinceEpoch();
-		Writeint8_t(hPipeOper, Operation::SCANSCHEDULED);
-		Writeint64_t(hPipeScheduled, secondsSinceEpoch);
-		std::u16string toSend = ui->pathLineEdit_2->text().toStdU16String();
-		WriteU16String(hPipeScheduled, toSend);
-		OperationResult oper = (OperationResult)Readint8_t(hPipeScheduled);
-		if (oper == OperationResult::SUCCESS)
-		{
-			Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
-			int numofParts = Readuint32_t(hPipeOper);
-			for (int i = 0; i < numofParts; i++)
+			if (toStopScan)
 			{
-				std::u16string stat = ReadU16String(hPipeOper);
-				if (stat != u"")
-					output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+				output("Scan hasn't been finished");
+				toStopScan = false;
 			}
-		}
-	}
-	//ui->resultTextEdit->setText("");
+			else
+			{
+				QDateTime currTime(QDateTime::currentDateTime());
+				logAppend(currTime.time().toString() + ": Finished scanning " + QString::fromStdU16String(toSend));
+			}
+			ui->scanStatusLabel->setText("");
+			setScanStartButton(true);
+			setScanStopButton(false);
 
-	
+ 			//ui->startScanButton->setEnabled(true);
+
+// 			ui->stopButton->setEnabled(false);
+		}
+	}
+// 	else
+// 	{
+// 		QTime qtime(ui->dateTimeEdit->time().hour(), ui->dateTimeEdit->time().minute(),0,0);
+// 		QDateTime qDateTime(ui->dateTimeEdit->date(), qtime);
+// 		qint64 secondsSinceEpoch = qDateTime.toSecsSinceEpoch();//ui->dateTimeEdit->dateTime().toSecsSinceEpoch();
+// 		Writeint8_t(hPipeScheduled, Operation::SCANSCHEDULED);
+// 		Writeint64_t(hPipeScheduled, secondsSinceEpoch);
+// 		std::u16string toSend = ui->pathLineEdit_2->text().toStdU16String();
+// 		WriteU16String(hPipeScheduled, toSend);
+// 		OperationResult oper = (OperationResult)Readint8_t(hPipeScheduled);
+// 		if (oper != OperationResult::SUCCESS)
+// 		{
+// 			//Sleep(1000);
+// 			while (oper != OperationResult::SUCCESS)
+// 			{
+// 				Writeint8_t(hPipeScheduled, Operation::GET_STATE);
+// 				oper = (OperationResult)Readint8_t(hPipeScheduled);
+// 				if (oper == OperationResult::RUNNING)
+// 					output("Running");
+// 				else if (oper == OperationResult::SCHEDULED)
+// 					output("Scheduled");
+// 				else if (oper == OperationResult::FAILED)
+// 				{
+// 					output("Failed, wrong time");
+// 					return;
+// 				}
+// 				Sleep(1000);
+// 			}
+// 			writeText("");
+// 			Writeint8_t(hPipeScheduled, Operation::GET_STATISTICS);
+// 			int numofParts = Readuint32_t(hPipeScheduled);
+// 			for (int i = 0; i < numofParts; i++)
+// 			{
+// 				std::u16string stat = ReadU16String(hPipeScheduled);
+// 				if (stat != u"")
+// 					output(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+// 			}
+// 
+// 		}
+// 	}
 }
 
+
+void MainWindow::startScheduling()
+{
+	QTime qtime(ui->dateTimeEdit->time().hour(), ui->dateTimeEdit->time().minute(), 0, 0);
+	QDateTime qDateTime(ui->dateTimeEdit->date(), qtime);
+	qint64 secondsSinceEpoch = qDateTime.toSecsSinceEpoch();//ui->dateTimeEdit->dateTime().toSecsSinceEpoch();
+	Writeint8_t(hPipeScheduled, Operation::SCANSCHEDULED);
+	Writeint64_t(hPipeScheduled, secondsSinceEpoch);
+	std::u16string toSend = ui->pathLineEdit_2->text().toStdU16String();
+	WriteU16String(hPipeScheduled, toSend);
+	setScheduleStopButton(true);
+	OperationResult oper = (OperationResult)Readint8_t(hPipeScheduled);
+	OperationResult previousStatus = OperationResult::SCHEDULED;
+	ui->scheduleStatusLabel->setText("Scheduled");
+	if (oper != OperationResult::SUCCESS)
+	{
+		Sleep(300);
+		while (oper != OperationResult::SUCCESS)
+		{
+			Writeint8_t(hPipeScheduled, Operation::GET_STATE);
+			oper = (OperationResult)Readint8_t(hPipeScheduled);
+			if (oper == OperationResult::RUNNING)
+			{
+				if (toStopScheduleScan)
+				{
+					Writeint8_t(hPipeScheduled, Operation::STOP);
+					break;
+				}
+				if (previousStatus != oper)
+				{
+					previousStatus = oper;
+					QDateTime currTime(QDateTime::currentDateTime());
+					logAppend(currTime.time().toString() + ": Started scheduled scanning " + QString::fromStdU16String(toSend));
+					//ui->logTextEdit->append(currTime.time().toString() + ": Started scheduled scanning " + QString::fromStdU16String(toSend));
+					ui->scheduleStatusLabel->setText("Running");
+				}
+				//outputScheduled("Running");
+				outputScheduled(".");
+
+			}
+			else if (oper == OperationResult::WAITING)
+			{
+				if (previousStatus != oper)
+				{
+					previousStatus = oper;
+					ui->scheduleStatusLabel->setText("Waiting");
+				}
+			}
+			else if (oper == OperationResult::SCHEDULED)
+			{
+				if (toCancelSchedule)
+				{
+					Writeint8_t(hPipeScheduled, Operation::CANCELSCHEDULE);
+					ui->scheduleStatusLabel->setText("");
+					toCancelSchedule = false;
+					//outputScheduled("Schedule Canceled");
+					return;
+				}
+				if (previousStatus != oper)
+				{
+					previousStatus = oper;
+					ui->scheduleStatusLabel->setText("Scheduled");
+				}
+				//outputScheduled("Scheduled");
+			}
+			else if (oper == OperationResult::FAILED)
+			{
+				if (previousStatus != oper)
+				{
+					previousStatus = oper;
+					ui->scheduleStatusLabel->setText("Failed");
+				}
+				writeTextScheduled("");
+				setScheduleSetButton(true);
+				outputScheduled("Failed, wrong time");
+				return;
+			}
+			Sleep(1000);
+		}
+		if (previousStatus != oper)
+		{
+			previousStatus = oper;
+			ui->scheduleStatusLabel->setText("");
+		}
+		writeTextScheduled("");
+		ui->scheduleStatusLabel->setText("");
+		Writeint8_t(hPipeScheduled, Operation::GET_STATISTICS);
+		int numofParts = Readuint32_t(hPipeScheduled);
+		for (int i = 0; i < numofParts; i++)
+		{
+			std::u16string stat = ReadU16String(hPipeScheduled);
+			if (stat != u"")
+				outputScheduled(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+		}
+		if (toStopScheduleScan)
+		{
+			outputScheduled("Scan hasn't been finished");
+			toStopScheduleScan = false;
+		}
+		else
+		{
+			QDateTime currTime(QDateTime::currentDateTime());
+			logAppend(currTime.time().toString() + ": Finished scheduled scanning " + QString::fromStdU16String(toSend));
+		}
+		setScheduleSetButton(true);
+		setScheduleStopButton(false);
+	}
+}
+
+void MainWindow::startMonitoring()
+{
+	Writeint8_t(hPipeOper, Operation::MONITOR);
+	std::u16string toSend = ui->pathLineEdit_3->text().toStdU16String();
+	WriteU16String(hPipeOper, toSend);
+	OperationResult oper = (OperationResult)Readint8_t(hPipeOper);
+	OperationResult previousOper = OperationResult::FAILED;
+	setCancelMonitoringButton(true);
+	while (true)
+	{
+		Writeint8_t(hPipeOper, Operation::GET_STATE);
+		oper = (OperationResult)Readint8_t(hPipeOper);
+		Sleep(10);
+		if (oper != OperationResult::SUCCESS)
+		{
+			//Sleep(400);
+
+			if (oper == OperationResult::MONITORING)
+			{
+				if (previousOper != oper)
+				{
+					previousOper = oper;
+					setCancelMonitoringButton(true);
+					ui->monitorLabel->setText("Monitoring folder");
+				}
+				if (toCancelMonitoring)
+				{
+					Writeint8_t(hPipeOper, Operation::STOP);
+					ui->monitorLabel->setText("");
+					toCancelMonitoring = false;
+					//outputScheduled("Schedule Canceled");
+					return;
+				}
+				Writeint8_t(hPipeOper, Operation::GET_STATE);
+				oper = (OperationResult)Readint8_t(hPipeOper);
+				//outputMonitor(".");
+				//Sleep(1000);
+			}
+			else if (oper == OperationResult::RUNNING)
+			{
+				if (previousOper != oper)
+				{
+					previousOper = oper;
+					setCancelMonitoringButton(false);
+					ui->monitorLabel->setText("Running scan");
+				}
+			}
+// 			writeTextMonitor("");
+// 			Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
+// 			int numofParts = Readuint32_t(hPipeOper);
+// 			for (int i = 0; i < numofParts; i++)
+// 			{
+// 				std::u16string stat = ReadU16String(hPipeOper);
+// 				if (stat != u"")
+// 					outputMonitor(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+// 			}
+		}
+		else if (oper == OperationResult::SUCCESS)
+		{
+			writeTextMonitor("");
+			Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
+			int numofParts = Readuint32_t(hPipeOper);
+			for (int i = 0; i < numofParts; i++)
+			{
+				std::u16string stat = ReadU16String(hPipeOper);
+				if (stat != u"")
+					outputMonitor(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
+			}
+		}
+
+		Sleep(1);
+	}
+}
 
 void MainWindow::on_browseButton_clicked()
 {
@@ -131,14 +409,93 @@ void MainWindow::on_browseButton_clicked()
 
 void MainWindow::on_startScanButton_clicked()
 {
+	if (ui->pathLineEdit->text() == "")
+		return;
 	ui->resultTextEdit->setText("");
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() + ": Started scanning " + ui->pathLineEdit->text());
+
 	QThread* scThread = QThread::create(&MainWindow::scan, this,0);	
+	ui->stopButton->setEnabled(true);
+	ui->startScanButton->setEnabled(false);
+	scThread->start();
+}
+
+void MainWindow::on_setButton_clicked()
+{
+	if (ui->pathLineEdit_2->text() == "")
+		return;
+	//ui->stopButton_2->setEnabled(true);
+	ui->setButton->setEnabled(false);
+	ui->resultTextEdit_2->setText("");
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() + ": Started scheduling " + ui->pathLineEdit_2->text());
+	QThread* scThread = QThread::create(&MainWindow::startScheduling, this);
+//	ui->pathLineEdit_2->setText(ui->pathLineEdit->text());
 	scThread->start();
 }
 
 void MainWindow::on_browseButton_2_clicked()
 {
-	QThread* scThread = QThread::create(&MainWindow::scan, this, 1);
-	ui->pathLineEdit_2->setText(ui->pathLineEdit->text());
+	FileDialog* fd = new FileDialog(nullptr);
+	fd->show();
+	if (fd->exec())
+	{
+		QString directory = fd->selectedFiles()[0];
+		if (directory != "")
+		{
+			directory.replace(QString("//"), QString("/"));
+			ui->pathLineEdit_2->setText(directory);
+		}
+	}
+}
+
+void MainWindow::on_browseButton_3_clicked()
+{
+	QString dir = QFileDialog::getExistingDirectory(this, "Choose folder to monitor", QString());
+	ui->pathLineEdit_3->setText(dir);
+
+}
+
+void MainWindow::on_monitorButton_clicked()
+{
+	if (ui->pathLineEdit_3->text() == "")
+		return;
+	ui->resultTextEdit_3->setText("");
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() +": Started monitoring " + ui->pathLineEdit_3->text());
+	QThread* scThread = QThread::create(&MainWindow::startMonitoring, this);
 	scThread->start();
+}
+
+void MainWindow::on_stopButton_clicked()
+{
+	toStopScan = true;
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() + ": Stopped scanning");
+	ui->stopButton->setEnabled(false);
+	ui->startScanButton->setEnabled(true);
+}
+
+void MainWindow::on_cancelSchedule_clicked()
+{
+	toCancelSchedule = true;
+	ui->setButton->setEnabled(true);
+	ui->cancelSchedule->setEnabled(false);
+}
+
+void MainWindow::on_stopButton_2_clicked()
+{
+	toStopScheduleScan = true;
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() + ": Stopped scheduled scanning");
+	ui->stopButton_2->setEnabled(false);
+	ui->setButton->setEnabled(true);
+}
+
+void MainWindow::on_cancelMonitorButton_clicked()
+{
+	toCancelMonitoring = true;
+	QDateTime currTime(QDateTime::currentDateTime());
+	ui->logTextEdit->append(currTime.time().toString() + ": Canceled monitoring ");
 }

@@ -5,6 +5,7 @@
 #include <ctime>
 #include <chrono>
 #include "Scanner.h"
+#include "ScanTaskBase.h"
 class ScheduleScanner
 {
 public:

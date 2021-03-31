@@ -108,10 +108,13 @@
     <ClCompile Include="..\SHA256\src\SHA256.cpp" />
     <ClCompile Include="Bases.cpp" />
     <ClCompile Include="BasesLoader.cpp" />
+    <ClCompile Include="Monitor.cpp" />
     <ClCompile Include="ScanEngine.cpp" />
     <ClCompile Include="Scanner.cpp" />
     <ClCompile Include="ScanObject.cpp" />
+    <ClCompile Include="ScanPathTask.cpp" />
     <ClCompile Include="ScheduleScanner.cpp" />
+    <ClCompile Include="ScheduleScannerTask.cpp" />
     <ClCompile Include="Service.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -124,10 +127,14 @@
     <ClInclude Include="..\SHA256\include\SHA256.h" />
     <ClInclude Include="Bases.h" />
     <ClInclude Include="BasesLoader.h" />
+    <ClInclude Include="Monitor.h" />
     <ClInclude Include="ScanEngine.h" />
     <ClInclude Include="Scanner.h" />
     <ClInclude Include="ScanObject.h" />
+    <ClInclude Include="ScanPathTask.h" />
+    <ClInclude Include="ScanTaskBase.h" />
     <ClInclude Include="ScheduleScanner.h" />
+    <ClInclude Include="ScheduleScannerTask.h" />
     <ClInclude Include="Service.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

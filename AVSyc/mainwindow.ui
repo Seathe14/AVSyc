@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>439</width>
-    <height>414</height>
+    <width>815</width>
+    <height>589</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,17 +35,24 @@
    <widget class="QWidget" name="verticalLayoutWidget_9">
     <property name="geometry">
      <rect>
-      <x>9</x>
-      <y>35</y>
+      <x>10</x>
+      <y>10</y>
       <width>301</width>
-      <height>251</height>
+      <height>231</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_9">
      <item>
-      <widget class="QLabel" name="label_9">
+      <widget class="QLabel" name="scanStatusLabel">
        <property name="text">
-        <string>Путь</string>
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="pathLabel">
+       <property name="text">
+        <string>Path</string>
        </property>
       </widget>
      </item>
@@ -65,7 +72,7 @@
     <property name="geometry">
      <rect>
       <x>320</x>
-      <y>50</y>
+      <y>10</y>
       <width>80</width>
       <height>31</height>
      </rect>
@@ -78,7 +85,7 @@
     <property name="geometry">
      <rect>
       <x>320</x>
-      <y>130</y>
+      <y>60</y>
       <width>81</width>
       <height>31</height>
      </rect>
@@ -87,25 +94,12 @@
      <string>Scan</string>
     </property>
    </widget>
-   <widget class="QDateTimeEdit" name="dateTimeEdit">
+   <widget class="QPushButton" name="setButton">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>340</y>
-      <width>194</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="timeSpec">
-     <enum>Qt::LocalTime</enum>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="browseButton_2">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>340</y>
-      <width>71</width>
+      <x>320</x>
+      <y>520</y>
+      <width>81</width>
       <height>21</height>
      </rect>
     </property>
@@ -113,17 +107,216 @@
      <string>Set</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="pathLineEdit_2">
+   <widget class="QWidget" name="verticalLayoutWidget_10">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>310</y>
-      <width>299</width>
-      <height>22</height>
+      <y>290</y>
+      <width>301</width>
+      <height>251</height>
      </rect>
     </property>
-    <property name="readOnly">
-     <bool>true</bool>
+    <layout class="QVBoxLayout" name="verticalLayout_11">
+     <item>
+      <widget class="QLabel" name="scheduleLabel">
+       <property name="text">
+        <string>Schedule scanner</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="scheduleStatusLabel">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="pathLabel_2">
+       <property name="text">
+        <string>Путь</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="pathLineEdit_2">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTextEdit" name="resultTextEdit_2"/>
+     </item>
+     <item>
+      <widget class="QDateTimeEdit" name="dateTimeEdit">
+       <property name="timeSpec">
+        <enum>Qt::LocalTime</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QPushButton" name="browseButton_2">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>330</y>
+      <width>80</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Browse</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="browseButton_3">
+    <property name="geometry">
+     <rect>
+      <x>720</x>
+      <y>30</y>
+      <width>80</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Browse</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_11">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>10</y>
+      <width>301</width>
+      <height>231</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_10">
+     <item>
+      <widget class="QLabel" name="monitorLabel">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="pathLabel_3">
+       <property name="text">
+        <string>Path</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="pathLineEdit_3">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTextEdit" name="resultTextEdit_3"/>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QPushButton" name="monitorButton">
+    <property name="geometry">
+     <rect>
+      <x>720</x>
+      <y>70</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Monitor</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stopButton">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>110</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Stop</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stopButton_2">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>380</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Stop</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="cancelSchedule">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>490</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Cancel</string>
+    </property>
+   </widget>
+   <widget class="QTextEdit" name="logTextEdit">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>350</y>
+      <width>299</width>
+      <height>182</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="logLabel">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>330</y>
+      <width>299</width>
+      <height>13</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Log</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="cancelMonitorButton">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>720</x>
+      <y>100</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Cancel</string>
     </property>
    </widget>
   </widget>
@@ -132,7 +325,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>439</width>
+     <width>815</width>
      <height>20</height>
     </rect>
    </property>

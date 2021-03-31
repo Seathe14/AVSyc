@@ -47,6 +47,15 @@
     <ClCompile Include="ScheduleScanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ScanPathTask.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScheduleScannerTask.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Monitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bases.h">
@@ -71,6 +80,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ScheduleScanner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScanPathTask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScanTaskBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScheduleScannerTask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Monitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

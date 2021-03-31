@@ -4,7 +4,7 @@
 
 Scanner::Scanner(Bases &base)
 {
-	this->base = base;
+	scEngine = std::make_unique<ScanEngine>(base);
 }
 using namespace zipper;
 
@@ -31,12 +31,20 @@ using namespace zipper;
 // 	return r;
 // }
 
+void Scanner::Stop() 
+{
+	scEngine->ScanStop();
+}
+
 void Scanner::Scan(const std::filesystem::path& path)
 {
+	locked = true;
 	mtx.lock();
-	ScanEngine scanEngine(path, base);
+	Sleep(1000);
+	statistics = u"";
 	ScanObject scanObj;
 	scanObj.setPath(path);
-	scanEngine.ScanPath(scanObj,statistics);
+	scEngine->ScanPath(scanObj,statistics);
 	mtx.unlock();
+	locked = false;
 }

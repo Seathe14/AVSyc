@@ -23,7 +23,21 @@ private slots:
 
     void on_startScanButton_clicked();
 
+    void on_setButton_clicked();
+
     void on_browseButton_2_clicked();
+
+    void on_browseButton_3_clicked();
+
+    void on_monitorButton_clicked();
+
+    void on_stopButton_clicked();
+
+    void on_cancelSchedule_clicked();
+
+    void on_stopButton_2_clicked();
+
+    void on_cancelMonitorButton_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -37,10 +51,31 @@ private:
 
     HANDLE hEvent;
 
+
+    bool toStopScan = false;
+	bool toStopScheduleScan = false;
+    bool toCancelSchedule = false;
+    bool toCancelMonitoring = false;
 private:
     void connectPipe();
     void scan(bool scheduled);
+    void startScheduling();
+    void startMonitoring();
 signals:
 	void output(const QString& toAppend);
+    void setScanStopButton(bool b);
+    void setScanStartButton(bool b);
+	void setScheduleStopButton(bool b);
+	void setScheduleSetButton(bool b);
+	void setStartMonitoringButton(bool b);
+	void setCancelMonitoringButton(bool b);
+
+    void writeText(const QString& toWrite);
+	void outputScheduled(const QString& toAppend);
+	void writeTextScheduled(const QString& toWrite);
+	void outputMonitor(const QString& toAppend);
+	void writeTextMonitor(const QString& toWrite);
+	void logAppend(const QString& toAppend);
+
 };
 #endif // MAINWINDOW_H

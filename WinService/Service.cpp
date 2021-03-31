@@ -10,6 +10,8 @@
 #include <aclapi.h>
 #include <ReadWrite.h>
 #include <Operations.h>
+#include "ScanPathTask.h"
+#include "ScheduleScannerTask.h"
 #include <thread>
 #pragma comment(lib,"wtsapi32.lib")
 #pragma comment(lib,"userenv.lib")
@@ -170,6 +172,8 @@ void Service::sendStatistics(const std::u16string &reportToSend)
 	}
 }
 
+
+
 void Service::launchUI()
 {
 	std::filesystem::path p1(SOLUTION_DIR);
@@ -193,79 +197,366 @@ void Service::launchUI()
 	CreateProcessAsUserW(token, path.c_str(), NULL, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT, penv, NULL, &si, &pi);
 }
 
-DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
+
+void Service::AcceptPathMessages(ScanPathTask& scPathTask)
 {
-	//HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, L"StatEvent");
 	DWORD cbRead, cbWritten;
 	UCHAR code;
-	std::filesystem::path p(SOLUTION_DIR);
-	p += "BaseEditor\\Ghosts.dbs";
-	Bases base(p.u16string());
-	static std::u16string lastResult;
-	std::mutex mtx;
+	while (true)
+	{
+		if (ReadFile(ServiceInstance->hPipe, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
+		{
+			switch (code)
+			{
+			case Operation::SCANPATH:
+			{
+// 				if (scPathTask.getStatus() != TaskStatus::Stopped && scPathTask.getStatus() != TaskStatus::Complete)
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipe, OperationResult::RUNNING);
+// 					break;
+// 				}
+				Writeint8_t(ServiceInstance->hPipe, OperationResult::WAITING);
+				std::filesystem::path path;
+				// 				Scanner sc(base);
+				path = ReadU16String(ServiceInstance->hPipe);
+				std::thread t1 = std::thread(&ScanPathTask::scan, &scPathTask, path);
+				t1.detach();
+				Sleep(500);
+				//Writeint8_t(ServiceInstance->hPipe, OperationResult::RUNNING);
+				// 				lastResult = sc.getStatistics();
+				break;
+			}
+			case Operation::GET_STATE:
 
+				if (scPathTask.getStatus() == TaskStatus::Complete)
+					Writeint8_t(ServiceInstance->hPipe, OperationResult::SUCCESS);
+				else if(scPathTask.getStatus() == TaskStatus::Running)
+				{
+					Writeint8_t(ServiceInstance->hPipe, OperationResult::RUNNING);
+				}
+				else 
+				{
+					Writeint8_t(ServiceInstance->hPipe, OperationResult::WAITING);
+				}
+				break;
+			case Operation::STOP:
+				scPathTask.stop();
+				break;
+			case Operation::GET_STATISTICS:
+				std::u16string result = scPathTask.getTaskStatistic();
+				if (result.length() > 1024)
+				{
+					int numofParts = result.length() % 1024 ? result.length() / 1024 + 1 : result.length() / 1024;
+					Writeuint32_t(ServiceInstance->hPipe, numofParts);
+					for (int i = 0; i < numofParts; i++)
+					{
+						std::u16string partToSend = result.substr(i * 1024, 1024);
+						WriteU16String(ServiceInstance->hPipe, partToSend);
+					}
+				}
+				else
+				{
+					Writeint32_t(ServiceInstance->hPipe, 1);
+					WriteU16String(ServiceInstance->hPipe, result);
+				}
+				break;
+
+			}
+		}
+		else
+		{
+			DisconnectNamedPipe(ServiceInstance->hPipe);
+			//DisconnectNamedPipe(ServiceInstance->hPipe);
+			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
+			//ConnectNamedPipe(ServiceInstance->hPipe, NULL);
+
+		}
+	}
+}
+
+void Service::AcceptScheduleMessages(ScheduleScannerTask& scheduledScanner)
+{
+	DWORD cbRead, cbWritten;
+	UCHAR code;
+	while (true)
+	{
+		if (ReadFile(ServiceInstance->hPipeScheduled, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
+		{
+			switch (code)
+			{
+			case Operation::SCANSCHEDULED:
+			{
+				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
+// 				if (scheduledScanner.getStatus() != TaskStatus::Stopped && scheduledScanner.getStatus() != TaskStatus::Complete && scheduledScanner.getStatus()!= TaskStatus::Scheduled)
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::RUNNING);
+// 					break;
+// 				}
+				std::filesystem::path path;
+				path = ReadU16String(ServiceInstance->hPipeScheduled);
+				std::thread t1 = std::thread(&ScheduleScannerTask::schedule, &scheduledScanner, time, path);
+				t1.detach();
+				Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::SCHEDULED);
+				Sleep(500);
+
+				break;
+			}
+			case Operation::GET_STATE:
+				if (scheduledScanner.getStatus() == TaskStatus::Complete)
+					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::SUCCESS);
+				else if(scheduledScanner.getStatus() == TaskStatus::Scheduled)
+				{
+					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::SCHEDULED);
+				}
+				else if (scheduledScanner.getStatus() == TaskStatus::Failed)
+				{
+					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::FAILED);
+
+				}
+				else if(scheduledScanner.getStatus() == TaskStatus::Waiting)
+				{
+					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::WAITING);
+				}
+				else
+				{
+					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::RUNNING);
+				}
+				break;
+			case Operation::STOP:
+				scheduledScanner.stop();
+				break;
+			case Operation::CANCELSCHEDULE:
+				scheduledScanner.cancel();
+				break;
+			case Operation::GET_STATISTICS:
+				std::u16string result = scheduledScanner.getTaskStatistic();
+				if (result.length() > 1024)
+				{
+					int numofParts = result.length() % 1024 ? result.length() / 1024 + 1 : result.length() / 1024;
+					Writeuint32_t(ServiceInstance->hPipeScheduled, numofParts);
+					for (int i = 0; i < numofParts; i++)
+					{
+						std::u16string partToSend = result.substr(i * 1024, 1024);
+						WriteU16String(ServiceInstance->hPipeScheduled, partToSend);
+					}
+				}
+				else
+				{
+					Writeint32_t(ServiceInstance->hPipeScheduled, 1);
+					WriteU16String(ServiceInstance->hPipeScheduled, result);
+				}
+				break;
+			}
+		}
+		else
+		{
+			DisconnectNamedPipe(ServiceInstance->hPipeScheduled);
+			ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
+
+		}
+	}
+}
+
+void Service::AcceptMonitorMessages(Monitor& monitorTask)
+{
+	DWORD cbRead, cbWritten;
+	UCHAR code;
 	while (true)
 	{
 		if (ReadFile(ServiceInstance->hPipeOper, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
 		{
 			switch (code)
 			{
-			case Operation::SCANSCHEDULED:
+			case Operation::MONITOR:
 			{
-
-				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
-				ScheduleScanner* scScanner = new ScheduleScanner(time,ServiceInstance->hPipeScheduled,lastResult);
-				//std::filesystem::path path;
-				scScanner->setPath(ServiceInstance->hPipeScheduled);
-				std::thread t1(&ScheduleScanner::doWork, scScanner);
-				t1.detach();
-				break;
-			}
-			case Operation::SCANPATH:
-			{
+				// 				if (scheduledScanner.getStatus() != TaskStatus::Stopped && scheduledScanner.getStatus() != TaskStatus::Complete && scheduledScanner.getStatus()!= TaskStatus::Scheduled)
+				// 				{
+				// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
+				// 					break;
+				// 				}
 				std::filesystem::path path;
-				Scanner sc(base);
-				path = ReadU16String(ServiceInstance->hPipe);
-				sc.Scan(path);
-				Writeint8_t(ServiceInstance->hPipe, OperationResult::SUCCESS);
-				lastResult = sc.getStatistics();
+				path = ReadU16String(ServiceInstance->hPipeOper);
+				std::thread t1 = std::thread(&Monitor::monitorFolder, &monitorTask, path);
+				t1.detach();
+				Writeint8_t(ServiceInstance->hPipeOper, OperationResult::MONITORING);
+				//Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SCHEDULED);
 				break;
 			}
-			case Operation::GET_STATISTICS:
-				mtx.lock();
-				if (lastResult.length() > 1024)
+			case Operation::GET_STATE:
+				if (monitorTask.getStatus() == TaskStatus::Complete)
+					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SUCCESS);
+				else if (monitorTask.getStatus() == TaskStatus::Monitoring)
 				{
-					int numofParts = lastResult.length() % 1024 ? lastResult.length() / 1024 + 1 : lastResult.length() / 1024;
+					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::MONITORING);
+				}
+				else if (monitorTask.getStatus() == TaskStatus::Stopped)
+				{
+					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::STOPPED);
+
+				}
+// 				else if (monitorTask.getStatus() == TaskStatus::Scheduled)
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SCHEDULED);
+// 				}
+// 				else if (monitorTask.getStatus() == TaskStatus::Failed)
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::FAILED);
+// 
+// 				}
+				else
+				{
+					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
+				}
+				break;
+			case Operation::STOP:
+				monitorTask.stop();
+				break;
+			case Operation::GET_STATISTICS:
+				std::u16string result = monitorTask.getTaskStatistic();
+				if (result.length() > 1024)
+				{
+					int numofParts = result.length() % 1024 ? result.length() / 1024 + 1 : result.length() / 1024;
 					Writeuint32_t(ServiceInstance->hPipeOper, numofParts);
 					for (int i = 0; i < numofParts; i++)
 					{
-						std::u16string partToSend = lastResult.substr(i * 1024, 1024);
+						std::u16string partToSend = result.substr(i * 1024, 1024);
 						WriteU16String(ServiceInstance->hPipeOper, partToSend);
 					}
 				}
 				else
 				{
 					Writeint32_t(ServiceInstance->hPipeOper, 1);
-					WriteU16String(ServiceInstance->hPipeOper, lastResult);
+					WriteU16String(ServiceInstance->hPipeOper, result);
 				}
-				mtx.unlock();
-				//sendStatistics(lastResult);
-				//WriteU16String(ServiceInstance->hPipe, lastResult);
 				break;
 			}
-
 		}
 		else
 		{
-			DisconnectNamedPipe(ServiceInstance->hPipe);
-			DisconnectNamedPipe(ServiceInstance->hPipeScheduled);
 			DisconnectNamedPipe(ServiceInstance->hPipeOper);
 			ConnectNamedPipe(ServiceInstance->hPipeOper, NULL);
-			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
-			ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
+
 		}
 	}
 }
+
+DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
+{
+	//HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, L"StatEvent");
+// 	DWORD cbRead, cbWritten;
+// 	UCHAR code;
+ 	std::filesystem::path p(SOLUTION_DIR);
+ 	p += "BaseEditor\\Ghosts.dbs";
+ 	Bases base(p.u16string());
+ 	static std::u16string lastResult;
+ 	std::mutex mtx;
+ 	Scanner scanner(base);
+ 	ScanPathTask scPathTask(scanner);
+	ScheduleScannerTask scheduledScanner(scanner);
+	Monitor monitorTask(scanner);
+ 	std::string name = "thread123";
+
+	///
+// 	auto tr1 = thread(AcceptPathMEssages);
+// 	auto tr2 = thread(AcceptScheduledMEssages);
+// 	auto tr3 = thread(...monitor);
+	std::thread scanPathThread(&Service::AcceptPathMessages, ServiceInstance,scPathTask);
+	std::thread scanScheduleThread(&Service::AcceptScheduleMessages, ServiceInstance, scheduledScanner);
+	std::thread monitorThread(&Service::AcceptMonitorMessages, ServiceInstance, monitorTask);
+
+	scanPathThread.join();
+	monitorThread.join();
+	scanScheduleThread.join();
+/*	return;*/
+	//
+// 	while (true)
+// 	{
+// 		if (ReadFile(ServiceInstance->hPipeOper, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
+// 		{
+// 			switch (code)
+// 			{
+// 			case Operation::SCANSCHEDULED:
+// 			{
+// 				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
+// 				ScheduleScanner* scScanner = new ScheduleScanner(time,ServiceInstance->hPipeScheduled,lastResult);
+// 				//std::filesystem::path path;
+// 				scScanner->setPath(ServiceInstance->hPipeScheduled);
+// 				std::thread t1(&ScheduleScanner::doWork, scScanner);
+// 				t1.detach();
+// 				break;
+// 			}
+// 			case Operation::SCANPATH:
+// 			{
+// 				if(scPathTask.getStatus() != TaskStatus::Stopped && scPathTask.getStatus() != TaskStatus::Complete)
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
+// 					break;
+// 				}
+// 
+//  				std::filesystem::path path;
+// // 				Scanner sc(base);
+// 				path = ReadU16String(ServiceInstance->hPipe);
+// 				std::thread t1 = std::thread(&ScanPathTask::scan, &scPathTask, path);
+// 				t1.detach();
+// // 				while(true)
+// // 				{
+// // 					if (scPathTask.getStatus() != TaskStatus::Complete)
+// // 						Sleep(1000);
+// // 					else
+// // 						break;
+// // 				}
+// 				//scPathTask.scan(path);
+// 				//scPathTask.
+// // 				sc.Scan(path);
+//  				Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
+// // 				lastResult = sc.getStatistics();
+// 				break;
+// 			}
+// 			case Operation::GET_STATISTICS:
+// 				if (scPathTask.getStatus() == TaskStatus::Complete)
+// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SUCCESS);
+// 				else
+// 				{
+// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
+// 				}
+// 				//Writeint8_t(ServiceInstance->hPipeOper, scPathTask.getStatus());
+// // 				mtx.lock();
+// // 				if (lastResult.length() > 1024)
+// // 				{
+// // 					int numofParts = lastResult.length() % 1024 ? lastResult.length() / 1024 + 1 : lastResult.length() / 1024;
+// // 					Writeuint32_t(ServiceInstance->hPipeOper, numofParts);
+// // 					for (int i = 0; i < numofParts; i++)
+// // 					{
+// // 						std::u16string partToSend = lastResult.substr(i * 1024, 1024);
+// // 						WriteU16String(ServiceInstance->hPipeOper, partToSend);
+// // 					}
+// // 				}
+// // 				else
+// // 				{
+// // 					Writeint32_t(ServiceInstance->hPipeOper, 1);
+// // 					WriteU16String(ServiceInstance->hPipeOper, lastResult);
+// // 				}
+// // 				mtx.unlock();
+// 				//sendStatistics(lastResult);
+// 				//WriteU16String(ServiceInstance->hPipe, lastResult);
+// 				break;
+// 			}
+// 
+// 		}
+// 		else
+// 		{
+// 			DisconnectNamedPipe(ServiceInstance->hPipe);
+// 			DisconnectNamedPipe(ServiceInstance->hPipeScheduled);
+// 			DisconnectNamedPipe(ServiceInstance->hPipeOper);
+// 			ConnectNamedPipe(ServiceInstance->hPipeOper, NULL);
+// 			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
+// 			ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
+// 		}
+// 	}
+	return 0;
+}
+
+
 DWORD WINAPI Service::WaitForPipe(LPVOID lpvParam)
 {
 	SECURITY_DESCRIPTOR sd = { 0, };

@@ -30,6 +30,8 @@ std::string ANSIToUTF8(std::string str)
 
 void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 {
+
+	isStopped = false;
 	memset(&contents[0], 0, bufferSize);
 	Unzipper* unzip;
 	if (scanObj.sstream != nullptr)
@@ -65,19 +67,22 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 		}
 		else if (contents[0] != 'M' && contents[1] != 'Z')
 		{
-			statistics += u"File is not infected\n";
+			std::u16string temp(entries[i].name.begin(), entries[i].name.end());
+			stat += temp + u" is not infected\n";
 			continue;
 		}
 		uint64_t iterNum = size % bufferSize ? size / bufferSize + 1 : size / bufferSize;
 
 		for (int i = 0; i < iterNum; i++)
 		{
+			if (isStopped)
+				return;
 			for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
 			{
 				if (base.find((uint8_t*)&contents[j], offStart, virusName))
 				{
-					statistics += virusName;
-					statistics += u" in " + path.u16string() + u"\n";
+					stat += virusName;
+					stat += u" in " + scanObj.getPath().u16string() + u"\n";
 					numofViruses++;
 				}
 				offStart++;
@@ -86,12 +91,12 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 		}
 		if (numofViruses == 0)
 		{
-			statistics += u"File is not infected\n";
+			stat += u"File is not infected\n";
 		}
 	}
 	unzip->close();
 	delete unzip;
-	stat = statistics;
+	//stat = statistics;
 }
 
 void ScanEngine::ScanPath(ScanObject scanObj, std::u16string& stat)
@@ -123,6 +128,7 @@ void ScanEngine::ScanFolder(ScanObject scanObj, std::u16string& stat)
 
 void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 {
+	isStopped = false;
 	memset(&contents[0], 0, bufferSize);
 	std::ifstream ifs(scanObj.getPath().wstring(), std::ios::binary);
 	ifs.seekg(0, std::ios::end);
@@ -139,8 +145,8 @@ void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 	}
 	else if(contents[0] != 'M' && contents[1] != 'Z')
 	{
-		statistics += u"File is not infected\n";
-		stat = statistics;
+		//statistics += u"File is not infected\n";
+		stat += scanObj.getPath().u16string() + u" is not infected\n";
 		return;
 	}
 
@@ -149,12 +155,16 @@ void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 
 	for (int i = 0; i < iterNum; i++)
 	{
+		if (isStopped)
+			return;
 		for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
 		{
+			if (isStopped)
+				return;
 			if (base.find((uint8_t*)&contents[j], offStart, virusName))
 			{
-				statistics += virusName;
-				statistics += u" in " + scanObj.getPath().u16string() + u"\n";
+				stat += virusName;
+				stat += u" in " + scanObj.getPath().u16string() + u"\n";
 				numofViruses++;
 			}
 			offStart++;
@@ -163,9 +173,14 @@ void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 	}
 	if (numofViruses == 0)
 	{
-		statistics += u"File is not infected\n";
+		stat += u"File is not infected\n";
 	}
-	stat = statistics;
+	//stat = statistics;
+}
+
+void ScanEngine::ScanStop()
+{
+	isStopped = true;
 }
 
 void ScanEngine::updateString(std::ifstream& ifs)
