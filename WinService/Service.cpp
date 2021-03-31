@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "Service.h"
 #include <iostream>
 #include <strsafe.h>
@@ -11,6 +12,7 @@
 #include <ReadWrite.h>
 #include <Operations.h>
 #include "ScanPathTask.h"
+#include <tchar.h>
 #include "ScheduleScannerTask.h"
 #include <thread>
 #pragma comment(lib,"wtsapi32.lib")
@@ -41,11 +43,6 @@ void Service::ServiceProcess(int argc, TCHAR* argv[])
 	{
 		SvcReportEvent(TEXT("StartServiceCtrlDispatcher"));
 	}
-	//SC_HANDLE schSCManager;
-	//SC_HANDLE schService;
-	//schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-	//schService = OpenService(schSCManager, SVCNAME, SERVICE_ALL_ACCESS);
-	//StartServiceA(schService, NULL, NULL);
 }
 
 void Service::SvcInstall()
@@ -66,7 +63,7 @@ void Service::SvcInstall()
 	}
 
 	schService = CreateService(schSCManager, SVCNAME, SVCNAME,
-		SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
+		SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
 		SERVICE_ERROR_NORMAL, szPath, NULL, NULL, NULL, NULL, NULL);
 	if (schService == NULL)
 	{
@@ -75,8 +72,46 @@ void Service::SvcInstall()
 		return;
 	}
 	else printf("Service installed successfully\n");
+	createRegistryRecord();
+	DoUpdateSvcDacl();
 	CloseServiceHandle(schService);
 	CloseServiceHandle(schSCManager);
+}
+
+void Service::SvcUninstall()
+{
+	DWORD dwBytesNeeded;
+	SERVICE_STATUS_PROCESS ssp;
+
+	SC_HANDLE schSCManager = OpenSCManager(
+		NULL,                    // local computer
+		NULL,                    // ServicesActive database 
+		SC_MANAGER_ALL_ACCESS);  // full access rights 
+
+	if (NULL == schSCManager)
+	{
+		printf("OpenSCManager failed (%d)\n", GetLastError());
+		return;
+	}
+
+	SC_HANDLE schService = OpenService(
+		schSCManager,         // SCM database 
+		SVCNAME,            // name of service 
+		SERVICE_ALL_ACCESS |
+		SERVICE_QUERY_STATUS |
+		SERVICE_ENUMERATE_DEPENDENTS);
+
+	if (schService == NULL)
+	{
+		printf("OpenService failed (%d)\n", GetLastError());
+		CloseServiceHandle(schSCManager);
+		return;
+	}
+
+
+
+	DeleteService(schService);
+	deleteRegistryRecord();
 }
 
 void Service::setServiceInstance(Service* Instance)
@@ -87,7 +122,6 @@ void Service::setServiceInstance(Service* Instance)
 
 void Service::MainProcess()
 {
-	//ServiceInstance->startSvc();
 	ServiceInstance->gSvcStatusHandle = RegisterServiceCtrlHandler(SVCNAME, (LPHANDLER_FUNCTION)Service::SvcCtrlHandler);
 	if (!ServiceInstance->gSvcStatusHandle)
 	{
@@ -121,13 +155,13 @@ VOID WINAPI Service::SvcCtrlHandler(DWORD dwCtrl)
 {
 	switch (dwCtrl)
 	{
-	case SERVICE_CONTROL_STOP:
-		ServiceInstance->ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
-		//SetEvent(ghSvcStopEvent);
-		ServiceInstance->gSvcStatus.dwWin32ExitCode = 0;
-		ServiceInstance->gSvcStatus.dwCurrentState = SERVICE_STOPPED;
-		ServiceInstance->ReportSvcStatus(ServiceInstance->gSvcStatus.dwCurrentState, NO_ERROR, 0);
-		break;;
+// 	case SERVICE_CONTROL_STOP:
+// 		ServiceInstance->ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
+// 		//SetEvent(ghSvcStopEvent);
+// 		ServiceInstance->gSvcStatus.dwWin32ExitCode = 0;
+// 		ServiceInstance->gSvcStatus.dwCurrentState = SERVICE_STOPPED;
+// 		ServiceInstance->ReportSvcStatus(ServiceInstance->gSvcStatus.dwCurrentState, NO_ERROR, 0);
+// 		break;;
 	case SERVICE_CONTROL_INTERROGATE:
 		break;
 	case CTRL_CLOSE_EVENT:
@@ -222,8 +256,6 @@ void Service::AcceptPathMessages(ScanPathTask& scPathTask)
 				std::thread t1 = std::thread(&ScanPathTask::scan, &scPathTask, path);
 				t1.detach();
 				Sleep(500);
-				//Writeint8_t(ServiceInstance->hPipe, OperationResult::RUNNING);
-				// 				lastResult = sc.getStatistics();
 				break;
 			}
 			case Operation::GET_STATE:
@@ -244,21 +276,22 @@ void Service::AcceptPathMessages(ScanPathTask& scPathTask)
 				break;
 			case Operation::GET_STATISTICS:
 				std::u16string result = scPathTask.getTaskStatistic();
-				if (result.length() > 1024)
-				{
-					int numofParts = result.length() % 1024 ? result.length() / 1024 + 1 : result.length() / 1024;
-					Writeuint32_t(ServiceInstance->hPipe, numofParts);
-					for (int i = 0; i < numofParts; i++)
-					{
-						std::u16string partToSend = result.substr(i * 1024, 1024);
-						WriteU16String(ServiceInstance->hPipe, partToSend);
-					}
-				}
-				else
-				{
-					Writeint32_t(ServiceInstance->hPipe, 1);
-					WriteU16String(ServiceInstance->hPipe, result);
-				}
+				sendStatistics(result);
+// 				if (result.length() > 1024)
+// 				{
+// 					int numofParts = result.length() % 1024 ? result.length() / 1024 + 1 : result.length() / 1024;
+// 					Writeuint32_t(ServiceInstance->hPipe, numofParts);
+// 					for (int i = 0; i < numofParts; i++)
+// 					{
+// 						std::u16string partToSend = result.substr(i * 1024, 1024);
+// 						WriteU16String(ServiceInstance->hPipe, partToSend);
+// 					}
+// 				}
+// 				else
+// 				{
+// 					Writeint32_t(ServiceInstance->hPipe, 1);
+// 					WriteU16String(ServiceInstance->hPipe, result);
+// 				}
 				break;
 
 			}
@@ -266,9 +299,7 @@ void Service::AcceptPathMessages(ScanPathTask& scPathTask)
 		else
 		{
 			DisconnectNamedPipe(ServiceInstance->hPipe);
-			//DisconnectNamedPipe(ServiceInstance->hPipe);
 			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
-			//ConnectNamedPipe(ServiceInstance->hPipe, NULL);
 
 		}
 	}
@@ -287,11 +318,6 @@ void Service::AcceptScheduleMessages(ScheduleScannerTask& scheduledScanner)
 			case Operation::SCANSCHEDULED:
 			{
 				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
-// 				if (scheduledScanner.getStatus() != TaskStatus::Stopped && scheduledScanner.getStatus() != TaskStatus::Complete && scheduledScanner.getStatus()!= TaskStatus::Scheduled)
-// 				{
-// 					Writeint8_t(ServiceInstance->hPipeScheduled, OperationResult::RUNNING);
-// 					break;
-// 				}
 				std::filesystem::path path;
 				path = ReadU16String(ServiceInstance->hPipeScheduled);
 				std::thread t1 = std::thread(&ScheduleScannerTask::schedule, &scheduledScanner, time, path);
@@ -369,17 +395,11 @@ void Service::AcceptMonitorMessages(Monitor& monitorTask)
 			{
 			case Operation::MONITOR:
 			{
-				// 				if (scheduledScanner.getStatus() != TaskStatus::Stopped && scheduledScanner.getStatus() != TaskStatus::Complete && scheduledScanner.getStatus()!= TaskStatus::Scheduled)
-				// 				{
-				// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
-				// 					break;
-				// 				}
 				std::filesystem::path path;
 				path = ReadU16String(ServiceInstance->hPipeOper);
 				std::thread t1 = std::thread(&Monitor::monitorFolder, &monitorTask, path);
 				t1.detach();
 				Writeint8_t(ServiceInstance->hPipeOper, OperationResult::MONITORING);
-				//Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SCHEDULED);
 				break;
 			}
 			case Operation::GET_STATE:
@@ -394,15 +414,6 @@ void Service::AcceptMonitorMessages(Monitor& monitorTask)
 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::STOPPED);
 
 				}
-// 				else if (monitorTask.getStatus() == TaskStatus::Scheduled)
-// 				{
-// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SCHEDULED);
-// 				}
-// 				else if (monitorTask.getStatus() == TaskStatus::Failed)
-// 				{
-// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::FAILED);
-// 
-// 				}
 				else
 				{
 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
@@ -440,13 +451,97 @@ void Service::AcceptMonitorMessages(Monitor& monitorTask)
 	}
 }
 
+void Service::createRegistryRecord()
+{
+	TCHAR buffer[MAX_PATH];
+	GetCurrentDirectory(MAX_PATH, buffer);
+	DWORD dwDisposition;
+	HKEY  hKey;
+	DWORD Ret;
+	Ret =
+		RegCreateKeyEx(
+			HKEY_LOCAL_MACHINE,
+			TEXT("SOFTWARE\\AVSyc"),
+			0,
+			NULL,
+			REG_OPTION_NON_VOLATILE,
+			KEY_ALL_ACCESS | KEY_WOW64_64KEY,
+			NULL,
+			&hKey,
+			&dwDisposition);
+
+	if (Ret != ERROR_SUCCESS)
+	{
+		printf("Error opening or creating new key\n");
+		return;
+	}
+
+	RegSetValueEx(hKey,
+		TEXT("Working Directory"),
+		0,
+		REG_SZ,
+		(LPBYTE)(buffer),
+		((((DWORD)lstrlen(buffer) + 1)) * sizeof(TCHAR)));
+
+	RegCloseKey(hKey);
+}
+
+void Service::setWorkingDirectory()
+{
+	DWORD len = 1024;
+	DWORD readDataLen = len;
+
+	DWORD Ret;
+	HKEY hKey;
+
+	Ret = RegOpenKeyEx(
+		HKEY_LOCAL_MACHINE,
+		TEXT("SOFTWARE\\AVSyc"),
+		0,
+		KEY_READ | KEY_WOW64_64KEY,
+		&hKey
+	);
+
+	Ret = RegQueryValueEx(
+		hKey,
+		TEXT("Working Directory"),
+		NULL,
+		NULL,
+		(BYTE*)WorkingDirectory,
+		&readDataLen
+	);
+	if (Ret != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		return;
+	}
+	RegCloseKey(hKey);
+
+	_tcscat(WorkingDirectory, TEXT("\\"));
+	SetCurrentDirectory(WorkingDirectory);
+
+	TCHAR buffer[MAX_PATH];
+	GetCurrentDirectory(MAX_PATH, buffer);
+}
+
+void Service::deleteRegistryRecord()
+{
+	HKEY hKey;
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\AVSyc"),
+		0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+
+		RegDeleteTree(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\AVSyc"));
+	}
+}
+
 DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 {
-	//HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, L"StatEvent");
-// 	DWORD cbRead, cbWritten;
-// 	UCHAR code;
- 	std::filesystem::path p(SOLUTION_DIR);
- 	p += "BaseEditor\\Ghosts.dbs";
+ 	//std::filesystem::path p(SOLUTION_DIR);
+ 	//p += "BaseEditor\\Ghosts.dbs";
+	std::filesystem::path p = std::filesystem::current_path();
+	p += "\\Ghosts.dbs";
  	Bases base(p.u16string());
  	static std::u16string lastResult;
  	std::mutex mtx;
@@ -455,11 +550,6 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 	ScheduleScannerTask scheduledScanner(scanner);
 	Monitor monitorTask(scanner);
  	std::string name = "thread123";
-
-	///
-// 	auto tr1 = thread(AcceptPathMEssages);
-// 	auto tr2 = thread(AcceptScheduledMEssages);
-// 	auto tr3 = thread(...monitor);
 	std::thread scanPathThread(&Service::AcceptPathMessages, ServiceInstance,scPathTask);
 	std::thread scanScheduleThread(&Service::AcceptScheduleMessages, ServiceInstance, scheduledScanner);
 	std::thread monitorThread(&Service::AcceptMonitorMessages, ServiceInstance, monitorTask);
@@ -467,92 +557,6 @@ DWORD WINAPI Service::AcceptMessages(LPVOID lpvParam)
 	scanPathThread.join();
 	monitorThread.join();
 	scanScheduleThread.join();
-/*	return;*/
-	//
-// 	while (true)
-// 	{
-// 		if (ReadFile(ServiceInstance->hPipeOper, &code, sizeof(UCHAR), &cbRead, NULL) != 0)
-// 		{
-// 			switch (code)
-// 			{
-// 			case Operation::SCANSCHEDULED:
-// 			{
-// 				int64_t time = Readint64_t(ServiceInstance->hPipeScheduled);
-// 				ScheduleScanner* scScanner = new ScheduleScanner(time,ServiceInstance->hPipeScheduled,lastResult);
-// 				//std::filesystem::path path;
-// 				scScanner->setPath(ServiceInstance->hPipeScheduled);
-// 				std::thread t1(&ScheduleScanner::doWork, scScanner);
-// 				t1.detach();
-// 				break;
-// 			}
-// 			case Operation::SCANPATH:
-// 			{
-// 				if(scPathTask.getStatus() != TaskStatus::Stopped && scPathTask.getStatus() != TaskStatus::Complete)
-// 				{
-// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
-// 					break;
-// 				}
-// 
-//  				std::filesystem::path path;
-// // 				Scanner sc(base);
-// 				path = ReadU16String(ServiceInstance->hPipe);
-// 				std::thread t1 = std::thread(&ScanPathTask::scan, &scPathTask, path);
-// 				t1.detach();
-// // 				while(true)
-// // 				{
-// // 					if (scPathTask.getStatus() != TaskStatus::Complete)
-// // 						Sleep(1000);
-// // 					else
-// // 						break;
-// // 				}
-// 				//scPathTask.scan(path);
-// 				//scPathTask.
-// // 				sc.Scan(path);
-//  				Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
-// // 				lastResult = sc.getStatistics();
-// 				break;
-// 			}
-// 			case Operation::GET_STATISTICS:
-// 				if (scPathTask.getStatus() == TaskStatus::Complete)
-// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::SUCCESS);
-// 				else
-// 				{
-// 					Writeint8_t(ServiceInstance->hPipeOper, OperationResult::RUNNING);
-// 				}
-// 				//Writeint8_t(ServiceInstance->hPipeOper, scPathTask.getStatus());
-// // 				mtx.lock();
-// // 				if (lastResult.length() > 1024)
-// // 				{
-// // 					int numofParts = lastResult.length() % 1024 ? lastResult.length() / 1024 + 1 : lastResult.length() / 1024;
-// // 					Writeuint32_t(ServiceInstance->hPipeOper, numofParts);
-// // 					for (int i = 0; i < numofParts; i++)
-// // 					{
-// // 						std::u16string partToSend = lastResult.substr(i * 1024, 1024);
-// // 						WriteU16String(ServiceInstance->hPipeOper, partToSend);
-// // 					}
-// // 				}
-// // 				else
-// // 				{
-// // 					Writeint32_t(ServiceInstance->hPipeOper, 1);
-// // 					WriteU16String(ServiceInstance->hPipeOper, lastResult);
-// // 				}
-// // 				mtx.unlock();
-// 				//sendStatistics(lastResult);
-// 				//WriteU16String(ServiceInstance->hPipe, lastResult);
-// 				break;
-// 			}
-// 
-// 		}
-// 		else
-// 		{
-// 			DisconnectNamedPipe(ServiceInstance->hPipe);
-// 			DisconnectNamedPipe(ServiceInstance->hPipeScheduled);
-// 			DisconnectNamedPipe(ServiceInstance->hPipeOper);
-// 			ConnectNamedPipe(ServiceInstance->hPipeOper, NULL);
-// 			ConnectNamedPipe(ServiceInstance->hPipe, NULL);
-// 			ConnectNamedPipe(ServiceInstance->hPipeScheduled, NULL);
-// 		}
-// 	}
 	return 0;
 }
 
@@ -591,13 +595,25 @@ VOID Service::startSvc()
 
 VOID Service::SvcInit()
 {
+	setWorkingDirectory();
 	ServiceInstance->ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+	serv.launchUI();
+
+/*	HANDLE threadPipe;*/
+	std::thread t1(&Server::WaitForPipe, &serv);
+ 	t1.join();
+ 	std::thread t2(&Server::AcceptMessages, &serv);
+ 	t2.detach();
+	//threadPipe = CreateThread(NULL, 0, &serv.WaitForPipe(), NULL, 0, NULL);
+	//WaitForSingleObject(threadPipe, INFINITE);
+	//CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, NULL);
 	// TO_DO Perform work
-	ServiceInstance->launchUI();
-	HANDLE threadPipe;
-	threadPipe = CreateThread(NULL, 0, WaitForPipe, NULL, 0, NULL);
-	WaitForSingleObject(threadPipe, INFINITE);
-	CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, NULL);
+	//ServiceInstance->launchUI();
+
+// 	HANDLE threadPipe;
+// 	threadPipe = CreateThread(NULL, 0, WaitForPipe, NULL, 0, NULL);
+// 	WaitForSingleObject(threadPipe, INFINITE);
+// 	CreateThread(NULL, 0, AcceptMessages, (LPVOID)hPipe, 0, NULL);
 }
 
 

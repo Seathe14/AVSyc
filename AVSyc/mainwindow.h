@@ -39,15 +39,17 @@ private slots:
 
     void on_cancelMonitorButton_clicked();
 
+    void updateTime();
 private:
     Ui::MainWindow *ui;
+    QTimer* tmr;
     HANDLE hPipe;
 	HANDLE hPipeScheduled;
-    HANDLE hPipeOper;
+    HANDLE hPipeMonitor;
 
 	LPCTSTR lpszPipeName = TEXT("\\\\.\\pipe\\IPCPipe");
 	LPCTSTR lpszScPipeName = TEXT("\\\\.\\pipe\\IPCScheduledPipe");
-	LPCTSTR lpszPipeOperName = TEXT("\\\\.\\pipe\\IPCOperPipe");
+	LPCTSTR lpszPipeMonitorName = TEXT("\\\\.\\pipe\\IPCMonitorPipe");
 
     HANDLE hEvent;
 
@@ -67,6 +69,8 @@ signals:
     void setScanStartButton(bool b);
 	void setScheduleStopButton(bool b);
 	void setScheduleSetButton(bool b);
+	void setScheduleCancelButton(bool b);
+
 	void setStartMonitoringButton(bool b);
 	void setCancelMonitoringButton(bool b);
 

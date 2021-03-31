@@ -35,21 +35,3 @@ void ScheduleScannerTask::schedule(int64_t scTime,std::filesystem::path path)
 	}
 	scan(path);
 }
-
-// void ScheduleScannerTask::scan(std::filesystem::path path)
-// {
-// 	while (_sc->isLocked())
-// 	{
-// 		std::this_thread::sleep_for(milliseconds(1));
-// 	}
-// 	_ts = TaskStatus::Running;
-// 	_taskStatistic = u"";
-// 	_sc->Scan(path);
-// 	_taskStatistic = _sc->getStatistics();
-// 	_ts = TaskStatus::Complete;
-// }
-
-// void ScheduleScannerTask::stop()
-// {
-// 
-// }

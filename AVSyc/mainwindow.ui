@@ -43,6 +43,13 @@
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_9">
      <item>
+      <widget class="QLabel" name="scannerLabel">
+       <property name="text">
+        <string>Scanner</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QLabel" name="scanStatusLabel">
        <property name="text">
         <string/>
@@ -64,7 +71,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QTextEdit" name="resultTextEdit"/>
+      <widget class="QTextEdit" name="resultTextEdit">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -146,7 +157,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QTextEdit" name="resultTextEdit_2"/>
+      <widget class="QTextEdit" name="resultTextEdit_2">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QDateTimeEdit" name="dateTimeEdit">
@@ -196,6 +211,13 @@
      <item>
       <widget class="QLabel" name="monitorLabel">
        <property name="text">
+        <string>Monitor</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="monitorStatusLabel">
+       <property name="text">
         <string/>
        </property>
       </widget>
@@ -215,7 +237,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QTextEdit" name="resultTextEdit_3"/>
+      <widget class="QTextEdit" name="resultTextEdit_3">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -288,6 +314,9 @@
       <width>299</width>
       <height>182</height>
      </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QLabel" name="logLabel">

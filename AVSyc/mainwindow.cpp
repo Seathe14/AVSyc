@@ -5,6 +5,7 @@
 #include "ReadWrite.h"
 #include <thread>
 #include <QThread>
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -14,6 +15,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 	//To consider: Admin rights -> service, service -> no admin rights(doesn't work if AVSyc requires admin rights). Should AVSyc be always with admin rights?
 	std::thread t1(&MainWindow::connectPipe,this);
+	tmr = new QTimer();
+	tmr->setInterval(1000);
 	ui->dateTimeEdit->setMinimumDate(QDate::currentDate());
 	ui->dateTimeEdit->setMinimumDateTime(QDateTime::currentDateTime());
 	SC_HANDLE sc = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_CONNECT);
@@ -39,20 +42,24 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(this, &MainWindow::setScanStartButton, ui->startScanButton, &QPushButton::setEnabled);
 	connect(this, &MainWindow::setScheduleStopButton, ui->stopButton_2, &QPushButton::setEnabled);
 	connect(this, &MainWindow::setScheduleSetButton, ui->setButton, &QPushButton::setEnabled);
+	connect(this, &MainWindow::setScheduleCancelButton, ui->cancelSchedule, &QPushButton::setEnabled);
 	connect(this, &MainWindow::setStartMonitoringButton, ui->monitorButton, &QPushButton::setEnabled);
 	connect(this, &MainWindow::setCancelMonitoringButton, ui->cancelMonitorButton, &QPushButton::setEnabled);
-
+	connect(tmr, SIGNAL(timeout()), this, SLOT(updateTime()));
 	connect(this, &MainWindow::logAppend, ui->logTextEdit, &QTextEdit::append);
+	tmr->start();
 
 }
 MainWindow::~MainWindow()
 {
+	toCancelMonitoring = true;
+	Sleep(1000);
     DisconnectNamedPipe(hPipe);
 	CloseHandle(hPipe);
 	DisconnectNamedPipe(hPipeScheduled);
 	CloseHandle(hPipeScheduled);
-	DisconnectNamedPipe(hPipeOper);
-	CloseHandle(hPipeOper);
+	DisconnectNamedPipe(hPipeMonitor);
+	CloseHandle(hPipeMonitor);
     delete ui;
 }
 void MainWindow::connectPipe()
@@ -69,10 +76,10 @@ void MainWindow::connectPipe()
 		hPipeScheduled = CreateFile(lpszScPipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 		Sleep(1);
 	}
-	hPipeOper = CreateFile(lpszPipeOperName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-	while (hPipeOper == INVALID_HANDLE_VALUE)
+	hPipeMonitor = CreateFile(lpszPipeMonitorName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	while (hPipeMonitor == INVALID_HANDLE_VALUE)
 	{
-		hPipeOper = CreateFile(lpszPipeOperName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		hPipeMonitor = CreateFile(lpszPipeMonitorName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 		Sleep(1);
 	}
 }
@@ -126,6 +133,7 @@ void MainWindow::scan(bool scheduled)
 				if (toStopScan)
 				{
 					Writeint8_t(hPipe, Operation::STOP);
+					Sleep(500);
 					break;
 				}
 				Writeint8_t(hPipe, Operation::GET_STATE);
@@ -218,7 +226,6 @@ void MainWindow::startScheduling()
 	Writeint64_t(hPipeScheduled, secondsSinceEpoch);
 	std::u16string toSend = ui->pathLineEdit_2->text().toStdU16String();
 	WriteU16String(hPipeScheduled, toSend);
-	setScheduleStopButton(true);
 	OperationResult oper = (OperationResult)Readint8_t(hPipeScheduled);
 	OperationResult previousStatus = OperationResult::SCHEDULED;
 	ui->scheduleStatusLabel->setText("Scheduled");
@@ -234,13 +241,16 @@ void MainWindow::startScheduling()
 				if (toStopScheduleScan)
 				{
 					Writeint8_t(hPipeScheduled, Operation::STOP);
+					Sleep(500);
 					break;
 				}
 				if (previousStatus != oper)
 				{
 					previousStatus = oper;
+					setScheduleStopButton(true);
 					QDateTime currTime(QDateTime::currentDateTime());
 					logAppend(currTime.time().toString() + ": Started scheduled scanning " + QString::fromStdU16String(toSend));
+					setScheduleCancelButton(true);
 					//ui->logTextEdit->append(currTime.time().toString() + ": Started scheduled scanning " + QString::fromStdU16String(toSend));
 					ui->scheduleStatusLabel->setText("Running");
 				}
@@ -263,6 +273,10 @@ void MainWindow::startScheduling()
 					Writeint8_t(hPipeScheduled, Operation::CANCELSCHEDULE);
 					ui->scheduleStatusLabel->setText("");
 					toCancelSchedule = false;
+					setScheduleCancelButton(false);
+					QDateTime currTime(QDateTime::currentDateTime());
+					logAppend(currTime.time().toString() + ": Schedule scan canceled");
+
 					//outputScheduled("Schedule Canceled");
 					return;
 				}
@@ -313,22 +327,23 @@ void MainWindow::startScheduling()
 			logAppend(currTime.time().toString() + ": Finished scheduled scanning " + QString::fromStdU16String(toSend));
 		}
 		setScheduleSetButton(true);
+		setScheduleCancelButton(false);
 		setScheduleStopButton(false);
 	}
 }
 
 void MainWindow::startMonitoring()
 {
-	Writeint8_t(hPipeOper, Operation::MONITOR);
+	Writeint8_t(hPipeMonitor, Operation::MONITOR);
 	std::u16string toSend = ui->pathLineEdit_3->text().toStdU16String();
-	WriteU16String(hPipeOper, toSend);
-	OperationResult oper = (OperationResult)Readint8_t(hPipeOper);
+	WriteU16String(hPipeMonitor, toSend);
+	OperationResult oper = (OperationResult)Readint8_t(hPipeMonitor);
 	OperationResult previousOper = OperationResult::FAILED;
 	setCancelMonitoringButton(true);
 	while (true)
 	{
-		Writeint8_t(hPipeOper, Operation::GET_STATE);
-		oper = (OperationResult)Readint8_t(hPipeOper);
+		Writeint8_t(hPipeMonitor, Operation::GET_STATE);
+		oper = (OperationResult)Readint8_t(hPipeMonitor);
 		Sleep(10);
 		if (oper != OperationResult::SUCCESS)
 		{
@@ -340,18 +355,19 @@ void MainWindow::startMonitoring()
 				{
 					previousOper = oper;
 					setCancelMonitoringButton(true);
-					ui->monitorLabel->setText("Monitoring folder");
+					ui->monitorStatusLabel->setText("Monitoring folder");
 				}
 				if (toCancelMonitoring)
 				{
-					Writeint8_t(hPipeOper, Operation::STOP);
-					ui->monitorLabel->setText("");
+					Writeint8_t(hPipeMonitor, Operation::STOP);
+					ui->monitorStatusLabel->setText("");
 					toCancelMonitoring = false;
+					setStartMonitoringButton(true);
 					//outputScheduled("Schedule Canceled");
 					return;
 				}
-				Writeint8_t(hPipeOper, Operation::GET_STATE);
-				oper = (OperationResult)Readint8_t(hPipeOper);
+				Writeint8_t(hPipeMonitor, Operation::GET_STATE);
+				oper = (OperationResult)Readint8_t(hPipeMonitor);
 				//outputMonitor(".");
 				//Sleep(1000);
 			}
@@ -361,7 +377,7 @@ void MainWindow::startMonitoring()
 				{
 					previousOper = oper;
 					setCancelMonitoringButton(false);
-					ui->monitorLabel->setText("Running scan");
+					ui->monitorStatusLabel->setText("Running scan");
 				}
 			}
 // 			writeTextMonitor("");
@@ -377,11 +393,11 @@ void MainWindow::startMonitoring()
 		else if (oper == OperationResult::SUCCESS)
 		{
 			writeTextMonitor("");
-			Writeint8_t(hPipeOper, Operation::GET_STATISTICS);
-			int numofParts = Readuint32_t(hPipeOper);
+			Writeint8_t(hPipeMonitor, Operation::GET_STATISTICS);
+			int numofParts = Readuint32_t(hPipeMonitor);
 			for (int i = 0; i < numofParts; i++)
 			{
-				std::u16string stat = ReadU16String(hPipeOper);
+				std::u16string stat = ReadU16String(hPipeMonitor);
 				if (stat != u"")
 					outputMonitor(QDir::fromNativeSeparators(QString::fromStdU16String(stat)));
 			}
@@ -427,6 +443,7 @@ void MainWindow::on_setButton_clicked()
 		return;
 	//ui->stopButton_2->setEnabled(true);
 	ui->setButton->setEnabled(false);
+	ui->cancelSchedule->setEnabled(true);
 	ui->resultTextEdit_2->setText("");
 	QDateTime currTime(QDateTime::currentDateTime());
 	ui->logTextEdit->append(currTime.time().toString() + ": Started scheduling " + ui->pathLineEdit_2->text());
@@ -461,6 +478,7 @@ void MainWindow::on_monitorButton_clicked()
 {
 	if (ui->pathLineEdit_3->text() == "")
 		return;
+	ui->monitorButton->setEnabled(false);
 	ui->resultTextEdit_3->setText("");
 	QDateTime currTime(QDateTime::currentDateTime());
 	ui->logTextEdit->append(currTime.time().toString() +": Started monitoring " + ui->pathLineEdit_3->text());
@@ -496,6 +514,13 @@ void MainWindow::on_stopButton_2_clicked()
 void MainWindow::on_cancelMonitorButton_clicked()
 {
 	toCancelMonitoring = true;
+	ui->cancelMonitorButton->setEnabled(false);
 	QDateTime currTime(QDateTime::currentDateTime());
 	ui->logTextEdit->append(currTime.time().toString() + ": Canceled monitoring ");
+}
+
+void MainWindow::updateTime()
+{
+	QTime qtime(QTime::currentTime().hour(), QTime::currentTime().minute(), 0, 0);
+	ui->dateTimeEdit->setMinimumTime(qtime);
 }

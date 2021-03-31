@@ -31,7 +31,8 @@ std::string ANSIToUTF8(std::string str)
 void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 {
 
-	isStopped = false;
+	if (isStopped == true)
+		return;
 	memset(&contents[0], 0, bufferSize);
 	Unzipper* unzip;
 	if (scanObj.sstream != nullptr)
@@ -51,6 +52,8 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 	int numofViruses = 0;
 	for (int i = 0; i < entries.size(); i++)
 	{
+		if (isStopped)
+			return;
 		std::stringstream ss;
 		memset(&contents[0], 0, bufferSize);
 		unzip->extractEntryToStream(entries[i].name, ss);
@@ -79,6 +82,8 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 				return;
 			for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
 			{
+				if (isStopped)
+					return;
 				if (base.find((uint8_t*)&contents[j], offStart, virusName))
 				{
 					stat += virusName;
@@ -101,6 +106,7 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 
 void ScanEngine::ScanPath(ScanObject scanObj, std::u16string& stat)
 {
+	isStopped = false;
 	if (scanObj.type == OBJDIR)
 	{
 		ScanFolder(scanObj, stat);
@@ -128,7 +134,9 @@ void ScanEngine::ScanFolder(ScanObject scanObj, std::u16string& stat)
 
 void ScanEngine::ScanFile(ScanObject scanObj,std::u16string &stat)
 {
-	isStopped = false;
+	//isStopped = false;
+	if (isStopped == true)
+		return;
 	memset(&contents[0], 0, bufferSize);
 	std::ifstream ifs(scanObj.getPath().wstring(), std::ios::binary);
 	ifs.seekg(0, std::ios::end);

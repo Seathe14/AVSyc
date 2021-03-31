@@ -115,6 +115,7 @@
     <ClCompile Include="ScanPathTask.cpp" />
     <ClCompile Include="ScheduleScanner.cpp" />
     <ClCompile Include="ScheduleScannerTask.cpp" />
+    <ClCompile Include="Server.cpp" />
     <ClCompile Include="Service.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -135,6 +136,7 @@
     <ClInclude Include="ScanTaskBase.h" />
     <ClInclude Include="ScheduleScanner.h" />
     <ClInclude Include="ScheduleScannerTask.h" />
+    <ClInclude Include="Server.h" />
     <ClInclude Include="Service.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
