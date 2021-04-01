@@ -34,11 +34,13 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 	if (isStopped == true)
 		return;
 	memset(&contents[0], 0, bufferSize);
-	Unzipper* unzip;
+	//Unzipper* unzip;
+	std::unique_ptr<Unzipper> unzip;
 	if (scanObj.sstream != nullptr)
 	{
 		try {
-		unzip = new Unzipper(*scanObj.sstream);
+			unzip = std::make_unique<Unzipper>(*scanObj.sstream);
+		//unzip = new Unzipper(*scanObj.sstream);
 		}
 		catch (std::runtime_error err) {
 			return;
@@ -46,14 +48,22 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 	}
 	else
 	{
-		unzip = new Unzipper(scanObj.getPath().string());
+		try {
+			unzip = std::make_unique<Unzipper>(scanObj.getPath().string());
+		}
+		catch (std::runtime_error err) {
+			return;
+		}
 	}
 	std::vector<ZipEntry> entries = unzip->entries();
 	int numofViruses = 0;
 	for (int i = 0; i < entries.size(); i++)
 	{
 		if (isStopped)
+		{
+			unzip->close();
 			return;
+		}
 		std::stringstream ss;
 		memset(&contents[0], 0, bufferSize);
 		unzip->extractEntryToStream(entries[i].name, ss);
@@ -79,11 +89,17 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 		for (int i = 0; i < iterNum; i++)
 		{
 			if (isStopped)
+			{
+				unzip->close();
 				return;
+			}
 			for (int j = 0; j < bufferSize - MINSIGLENGTH; j++)
 			{
 				if (isStopped)
+				{
+					unzip->close();
 					return;
+				}
 				if (base.find((uint8_t*)&contents[j], offStart, virusName))
 				{
 					stat += virusName;
@@ -100,7 +116,7 @@ void ScanEngine::ScanZip(ScanObject scanObj, std::u16string& stat)
 		}
 	}
 	unzip->close();
-	delete unzip;
+	//delete unzip;
 	//stat = statistics;
 }
 

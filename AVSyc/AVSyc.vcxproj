@@ -240,10 +240,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="icon.rc" />
+    <QtMoc Include="FileDialog.h" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="FileDialog.h" />
+    <ResourceCompile Include="AVSyc.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -99,14 +99,9 @@ void Server::AcceptPathMessages(ScanPathTask& scPathTask)
 			{
 			case Operation::SCANPATH:
 			{
-				// 				if (scPathTask.getStatus() != TaskStatus::Stopped && scPathTask.getStatus() != TaskStatus::Complete)
-				// 				{
-				// 					Writeint8_t(ServiceInstance->hPipe, OperationResult::RUNNING);
-				// 					break;
-				// 				}
+
 				Writeint8_t(hPipe, OperationResult::WAITING);
 				std::filesystem::path path;
-				// 				Scanner sc(base);
 				path = ReadU16String(hPipe);
 				std::thread t1 = std::thread(&ScanPathTask::scan, &scPathTask, path);
 				t1.detach();
